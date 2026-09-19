@@ -1,0 +1,18 @@
+# waxseal
+
+> Detached Ed25519 Merkle seals for WACZ web archives.
+
+waxseal builds a deterministic Merkle root over every member of a WACZ web archive and signs it with Ed25519, producing a detached `seal.json`. It can also emit one inclusion proof per file, so a single member's membership can be shown without shipping the whole archive. Verification is offline, against a pinned public key or root.
+
+It runs entirely offline, with no network calls and no telemetry. Output is human-readable text, a detached `seal.json`, a proofs JSON file, and stable `--json` from `inspect`. Exit codes are `0` (success), `1` (findings or a verification failure), `2` (usage or argument error), and `3` (I/O failure).
+
+## Docs
+- [Overview](https://waxseal-srivtx.vercel.app/): Seal a WACZ archive and verify it offline, with a live demo.
+- [Commands](https://waxseal-srivtx.vercel.app/commands): Every command — `keygen`, `seal`, `verify`, `proof-verify`, and `inspect` — with real output.
+- [Usage](https://waxseal-srivtx.vercel.app/usage): Install, every `--help` option, examples, exit codes, and JSON output.
+- [CI](https://waxseal-srivtx.vercel.app/ci): Verify a seal in CI with the exit code as the gate and a pinned public key or root.
+- [FAQ](https://waxseal-srivtx.vercel.app/faq): Scope, limitations, and comparisons to py-wacz, wabac.js, ReplayWeb.page, and the in-archive WACZ signature.
+
+## Optional
+- [Source](https://github.com/srivtx/waxseal): TypeScript implementation, tests, and issue tracker.
+- [Install script](https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh): One-line install of the `waxseal` binary.
