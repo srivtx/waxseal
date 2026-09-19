@@ -16,6 +16,8 @@
 
 ---
 
+**Live site:** [waxseal](https://lens-site-srivtx.vercel.app/waxseal.html)  ·  **Playground:** [https://lens-site-srivtx.vercel.app/playground](https://lens-site-srivtx.vercel.app/playground)  ·  **Source:** [github.com/srivtx/waxseal](https://github.com/srivtx/waxseal)
+
 ## What a WACZ is, and what is missing
 
 A **WACZ** is a ZIP of web-archive files. It carries its own integrity chain:
