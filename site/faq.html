@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAQ — waxseal</title>
+<meta name="description" content="waxseal scope, limitations, and how it compares to py-wacz, wabac.js, ReplayWeb.page, waczerciser, and the in-archive WACZ signature.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="FAQ — waxseal">
+<meta property="og:description" content="waxseal scope, limitations, and how it compares to the tools around it.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://waxseal-srivtx.vercel.app/faq.html">
+<meta property="og:image" content="https://waxseal-srivtx.vercel.app/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FAQ — waxseal">
+<meta name="twitter:description" content="waxseal scope, limitations, and how it compares to the tools around it.">
+<meta name="twitter:image" content="https://waxseal-srivtx.vercel.app/assets/og.png">
+<link rel="canonical" href="https://waxseal-srivtx.vercel.app/faq.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b45309'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='white' stroke-width='2.2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.2'/%3E%3Ccircle cx='16' cy='16' r='1.8' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/lens.css">
+<link rel="stylesheet" href="assets/theme.css">
+<script>
+(function () {
+  try {
+    var stored = window.localStorage.getItem("waxseal-theme");
+    if (stored === "dark" || stored === "light") {
+      document.documentElement.setAttribute("data-theme", stored);
+    }
+  } catch (err) {}
+})();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="nav" id="top">
+  <div class="container nav__inner">
+    <a class="brand" href="index.html" aria-label="waxseal home">
+      <span class="brand__mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 32 32" focusable="false">
+          <circle cx="16" cy="16" r="11.5"></circle>
+          <circle cx="16" cy="16" r="6.5"></circle>
+          <circle cx="16" cy="16" r="1.8" style="fill:currentColor;stroke:none"></circle>
+        </svg>
+      </span>
+      <span class="brand__name">waxseal</span>
+      <span class="brand__tag">WACZ integrity seal</span>
+    </a>
+
+    <nav class="nav__links" id="site-nav" aria-label="Sections">
+      <a href="commands.html">Commands</a>
+      <a href="usage.html">Usage</a>
+      <a href="ci.html">CI</a>
+      <a href="index.html#demo">Playground</a>
+      <a href="https://github.com/srivtx/waxseal">GitHub</a>
+    </nav>
+
+    <div class="nav__actions">
+      <button type="button" class="nav__toggle btn btn--ghost btn--sm" id="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+      </button>
+      <button type="button" class="btn btn--ghost btn--sm" id="theme-toggle" aria-pressed="false" aria-label="Switch to dark theme">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+        <span id="theme-toggle-text">Theme</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="container">
+    <div class="docs">
+      <nav class="docs__nav" aria-label="Documentation">
+        <h2>waxseal</h2>
+        <ul>
+          <li><a href="index.html">Overview</a></li>
+          <li><a href="commands.html">Commands</a></li>
+          <li><a href="usage.html">Usage</a></li>
+          <li><a href="ci.html">CI</a></li>
+          <li><a href="faq.html" aria-current="page">FAQ</a></li>
+        </ul>
+      </nav>
+
+      <article class="docs__body">
+        <div class="docs__head">
+          <p class="eyebrow">Reference</p>
+          <h1>FAQ</h1>
+          <p>Scope, limits, and where waxseal fits next to the tools you already use.</p>
+        </div>
+
+        <h2>Questions</h2>
+        <div class="faq">
+          <details>
+            <summary>Is anything uploaded when I use the demo?</summary>
+            <div class="faq__body"><p>No. The bundled Merkle and inclusion-proof code runs entirely in this tab. It hashes with a vendored JavaScript SHA-256 shim, not <code>node:crypto</code>, and makes no network requests. Reload the page and the state is gone.</p></div>
+          </details>
+          <details>
+            <summary>Does a valid seal prove who signed it?</summary>
+            <div class="faq__body"><p>No. It proves the signer held the private key matching the embedded public key, and that the archive matches the committed root. There is no identity or trust model for that key. Pin <code>--public-key</code> or <code>--root</code> to turn self-consistency into trust.</p></div>
+          </details>
+          <details>
+            <summary>Does it prove when the archive was sealed?</summary>
+            <div class="faq__body"><p>No trusted timestamp. <code>createdAt</code> is self-asserted by the signer. Pair the root with a timestamping authority if you need a proven "existed before" time.</p></div>
+          </details>
+          <details>
+            <summary>What happens if I re-zip the same content?</summary>
+            <div class="faq__body"><p>A member-level check tolerates it, because leaves are <code>(normalized path, content SHA-256)</code> pairs and the root is unchanged. Strict byte mode (<code>archiveSha256</code>) catches any byte difference, including appended trailing bytes that leave every member unchanged.</p></div>
+          </details>
+          <details>
+            <summary>How do I verify a single file fully offline?</summary>
+            <div class="faq__body"><p>Sealing with <code>--proofs</code> emits one inclusion proof per member, plus the root and each member's content SHA-256. Hand over one proof and run <code>waxseal proof-verify --proofs &lt;proofs.json&gt; --path &lt;member&gt; --root &lt;hex-root&gt; --sha256 &lt;hex-content-hash&gt;</code> — no archive and no network required.</p></div>
+          </details>
+          <details>
+            <summary>How does waxseal relate to py-wacz?</summary>
+            <div class="faq__body"><p>They are complementary. py-wacz validates the WACZ's own datapackage chain inside the archive; waxseal adds a detached, portable Merkle-and-Ed25519 proof layer on top of the same members.</p></div>
+          </details>
+          <details>
+            <summary>Why can't the browser demo sign?</summary>
+            <div class="faq__body"><p>Ed25519 key generation, signing, and signature verification require the CLI, which uses local <code>node:crypto</code>. The demo intentionally covers only the Merkle root and inclusion proofs, which run fully client-side.</p></div>
+          </details>
+          <details>
+            <summary>What happens with a malformed or oversized archive?</summary>
+            <div class="faq__body"><p>It fails safely. Extraction is bounded to 65,535 members and 1 GiB uncompressed, ZIP paths are normalized (Unicode NFC, leading <code>./</code> removed, absolute and <code>..</code> paths rejected), and the CLI reports a structured error instead of crashing.</p></div>
+          </details>
+        </div>
+
+        <h2>Limitations</h2>
+        <div class="callout" role="note">
+          <h3>What waxseal does not claim</h3>
+          <ul>
+            <li>ZIP member order and metadata are not part of the sealed bytes; use strict byte mode when you need byte-for-byte attestation.</li>
+            <li>Ed25519 only — no X.509 or ECDSA.</li>
+            <li>The datapackage digest re-check overlaps py-wacz; waxseal is a portable proof layer on top, not a replacement.</li>
+            <li>No identity or trust model for the public key beyond pinning <code>--public-key</code> or <code>--root</code>.</li>
+            <li>No trusted timestamp: <code>createdAt</code> is self-asserted by the signer.</li>
+          </ul>
+        </div>
+
+        <h2>How it compares</h2>
+        <div class="deflist">
+          <div class="defrow">
+            <dt class="defrow__term">py-wacz</dt>
+            <dd class="defrow__def">Validates the in-archive chain. It checks that <code>datapackage-digest.json</code> matches <code>datapackage.json</code> and every resource hash and byte count. It is Python, and its check is bound to the ZIP it validates. <a href="https://github.com/webrecorder/py-wacz">github.com/webrecorder/py-wacz</a></dd>
+          </div>
+          <div class="defrow">
+            <dt class="defrow__term">wabac.js</dt>
+            <dd class="defrow__def">Reads and replays WACZ. A JavaScript WACZ loader for replay tooling. It understands the archive format and provides no signing layer and no Merkle commitments. <a href="https://github.com/webrecorder/wabac.js">github.com/webrecorder/wabac.js</a></dd>
+          </div>
+          <div class="defrow">
+            <dt class="defrow__term">ReplayWeb.page</dt>
+            <dd class="defrow__def">Replay in the browser. It serves and replays WACZ archives client-side. It is a reading and replay tool, not an integrity or provenance tool. <a href="https://replayweb.page/">replayweb.page</a></dd>
+          </div>
+          <div class="defrow">
+            <dt class="defrow__term">waczerciser</dt>
+            <dd class="defrow__def">Structural checks only. It exercises ZIP structure and datapackage shape to catch malformed archives. It performs no cryptography and emits no signature. <a href="https://github.com/webrecorder/waczerciser">github.com/webrecorder/waczerciser</a></dd>
+          </div>
+          <div class="defrow">
+            <dt class="defrow__term">The WACZ signature</dt>
+            <dd class="defrow__def">The signature lives <strong>inside</strong> the ZIP it attests to, so it cannot be pinned, notarized, or distributed out of band. The spec and its implementations use anonymous ECDSA or X.509 ECDSA. <a href="https://specs.webrecorder.net/wacz/1.1.1/">specs.webrecorder.net</a></dd>
+          </div>
+        </div>
+
+        <div class="docs__foot">
+          <a href="ci.html">← CI</a>
+          <a href="index.html">Overview →</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 32 32" focusable="false">
+            <circle cx="16" cy="16" r="11.5"></circle>
+            <circle cx="16" cy="16" r="6.5"></circle>
+            <circle cx="16" cy="16" r="1.8" style="fill:currentColor;stroke:none"></circle>
+          </svg>
+        </span>
+        <div>
+          <p>waxseal</p>
+          <p class="muted">Detached Ed25519 seals for WACZ web archives.</p>
+          <p class="muted">The Lens suite: <a href="https://booklens-srivtx.vercel.app">booklens</a> · <a href="https://officelens-srivtx.vercel.app">officelens</a> · <a href="https://odflens-srivtx.vercel.app">odflens</a> · <a href="https://iconlens-srivtx.vercel.app">iconlens</a></p>
+        </div>
+      </div>
+      <nav aria-label="Documentation">
+        <h2>Documentation</h2>
+        <ul>
+          <li><a href="commands.html">Commands</a></li>
+          <li><a href="usage.html">Usage</a></li>
+          <li><a href="ci.html">CI</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Project">
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://waxseal-srivtx.vercel.app">Live site</a></li>
+          <li><a href="https://github.com/srivtx/waxseal">Repository</a></li>
+          <li><a href="https://github.com/srivtx/waxseal/blob/main/LICENSE">MIT license</a></li>
+          <li><a href="https://github.com/srivtx/waxseal/issues">Issues</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer__meta">
+      <p>by svx · MIT licensed. Part of <a href="https://lenses-srivtx.vercel.app">Lenses</a> — offline accessibility and integrity tools.</p>
+      <a href="#top">Back to top</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/site.js" defer></script>
+</body>
+</html>

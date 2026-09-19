@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CI — waxseal</title>
+<meta name="description" content="Verify a waxseal seal in CI: offline, with the exit code as the gate and a pinned public key or root.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="CI — waxseal">
+<meta property="og:description" content="Verify a waxseal seal in CI: offline, with the exit code as the gate and a pinned public key or root.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://waxseal-srivtx.vercel.app/ci.html">
+<meta property="og:image" content="https://waxseal-srivtx.vercel.app/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CI — waxseal">
+<meta name="twitter:description" content="Verify a waxseal seal in CI: offline, with the exit code as the gate and a pinned public key or root.">
+<meta name="twitter:image" content="https://waxseal-srivtx.vercel.app/assets/og.png">
+<link rel="canonical" href="https://waxseal-srivtx.vercel.app/ci.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b45309'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='white' stroke-width='2.2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.2'/%3E%3Ccircle cx='16' cy='16' r='1.8' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/lens.css">
+<link rel="stylesheet" href="assets/theme.css">
+<script>
+(function () {
+  try {
+    var stored = window.localStorage.getItem("waxseal-theme");
+    if (stored === "dark" || stored === "light") {
+      document.documentElement.setAttribute("data-theme", stored);
+    }
+  } catch (err) {}
+})();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="nav" id="top">
+  <div class="container nav__inner">
+    <a class="brand" href="index.html" aria-label="waxseal home">
+      <span class="brand__mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 32 32" focusable="false">
+          <circle cx="16" cy="16" r="11.5"></circle>
+          <circle cx="16" cy="16" r="6.5"></circle>
+          <circle cx="16" cy="16" r="1.8" style="fill:currentColor;stroke:none"></circle>
+        </svg>
+      </span>
+      <span class="brand__name">waxseal</span>
+      <span class="brand__tag">WACZ integrity seal</span>
+    </a>
+
+    <nav class="nav__links" id="site-nav" aria-label="Sections">
+      <a href="commands.html">Commands</a>
+      <a href="usage.html">Usage</a>
+      <a href="ci.html">CI</a>
+      <a href="index.html#demo">Playground</a>
+      <a href="https://github.com/srivtx/waxseal">GitHub</a>
+    </nav>
+
+    <div class="nav__actions">
+      <button type="button" class="nav__toggle btn btn--ghost btn--sm" id="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+      </button>
+      <button type="button" class="btn btn--ghost btn--sm" id="theme-toggle" aria-pressed="false" aria-label="Switch to dark theme">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+        <span id="theme-toggle-text">Theme</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="container">
+    <div class="docs">
+      <nav class="docs__nav" aria-label="Documentation">
+        <h2>waxseal</h2>
+        <ul>
+          <li><a href="index.html">Overview</a></li>
+          <li><a href="commands.html">Commands</a></li>
+          <li><a href="usage.html">Usage</a></li>
+          <li><a href="ci.html" aria-current="page">CI</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </nav>
+
+      <article class="docs__body">
+        <div class="docs__head">
+          <p class="eyebrow">Guide</p>
+          <h1>CI and verification gates</h1>
+          <p>waxseal is built to run in a pipeline: no network, a documented exit code, and a JSON object when you want one. Verification is the gate.</p>
+        </div>
+
+        <h2>Add it to a workflow</h2>
+        <p>Install the binary, then verify the archive against its seal with a pinned public key. The command reports and fails the job on its own, so no extra failure step is needed.</p>
+        <pre class="code"><code>name: Verify WACZ seal
+on: [push, pull_request]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.x
+
+      - name: Install waxseal
+        run: curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh
+
+      - name: Verify the seal offline against a pinned key
+        run: waxseal verify capture.wacz -s capture.seal.json --public-key "$WAXSEAL_PUBLIC_KEY"
+        env:
+          WAXSEAL_PUBLIC_KEY: ${{ secrets.WAXSEAL_PUBLIC_KEY }}</code></pre>
+        <p>Add <code>--json</code> to either step to log a machine-readable result, and pass <code>--member-only</code> when the pipeline legitimately re-zips the archive instead of preserving its exact bytes.</p>
+
+        <h2>The exit code is the gate</h2>
+        <p><code>verify</code> exits <code>0</code> on success and <code>1</code> on a failed or mismatched verification, so a shell step that runs the command fails the job whenever the archive does not match the seal. A usage error exits <code>2</code> and an I/O failure exits <code>3</code>. The full scheme is in <a href="usage.html">Usage</a>.</p>
+
+        <h2>Pin a public key or a root</h2>
+        <p>A seal carries its own public key, so on its own it is only self-consistent: <code>verify</code> prints <code>trusted: no</code> and checks the signature against the embedded key. Pass <code>--public-key &lt;pem|base64&gt;</code> or <code>--root &lt;hex&gt;</code> to pin what you trust; <code>trusted: yes</code> is reported only when the pin actually matches, and a mismatch fails with exit <code>1</code>. The SHA-256 fingerprint of the SPKI key is always printed so you can pin it out of band.</p>
+        <div class="callout" role="note">
+          <h3>Root-only pinning attests content, not provenance</h3>
+          <p>Pinning <code>--root</code> proves the archive hashes to that root, but it does not prove who signed it: an attacker can re-sign the same archive with their own key and still satisfy <code>--root</code>. Pin <code>--public-key</code> when you need a provenance verdict.</p>
+        </div>
+        <div class="term" aria-label="waxseal verify output">
+          <div class="term__bar">
+            <span class="term__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="term__title">waxseal verify</span>
+          </div>
+          <pre class="term__body term__body--wrap"><span class="ln"><span class="p">$ </span><span class="cmd">waxseal verify capture.wacz -s capture.seal.json --public-key archive-key.pub.pem</span></span><span class="ln"><span class="ok">OK</span></span><span class="ln"><span class="dim">root:        </span>7ce7902d6dc6619e28496d7c717bacfbfb36bc7982b6d424d8d1f11c9218fcf7</span><span class="ln"><span class="dim">signature:   </span><span class="ok">valid</span></span><span class="ln"><span class="dim">fingerprint: </span>sha256:8b3e7cbe526fdb46b70f4f3a8b2a3992475febd3f02f94a27a3b9395b2d3825c</span><span class="ln"><span class="dim">trusted:     </span><span class="warn">no</span><span class="dim"> — self-signed seal; pin it with --public-key or --root</span></span></pre>
+        </div>
+
+        <h2>Reproducible seals in CI</h2>
+        <p>Pass <code>--created-at &lt;iso&gt;</code> when sealing and the same archive, key, and timestamp produce a byte-identical seal — including the deterministic Ed25519 signature. A pipeline can rebuild the seal and diff it against the committed one. Without <code>--created-at</code>, <code>createdAt</code> defaults to the current time and each run differs.</p>
+
+        <div class="docs__foot">
+          <a href="usage.html">← Usage</a>
+          <a href="faq.html">FAQ →</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 32 32" focusable="false">
+            <circle cx="16" cy="16" r="11.5"></circle>
+            <circle cx="16" cy="16" r="6.5"></circle>
+            <circle cx="16" cy="16" r="1.8" style="fill:currentColor;stroke:none"></circle>
+          </svg>
+        </span>
+        <div>
+          <p>waxseal</p>
+          <p class="muted">Detached Ed25519 seals for WACZ web archives.</p>
+          <p class="muted">The Lens suite: <a href="https://booklens-srivtx.vercel.app">booklens</a> · <a href="https://officelens-srivtx.vercel.app">officelens</a> · <a href="https://odflens-srivtx.vercel.app">odflens</a> · <a href="https://iconlens-srivtx.vercel.app">iconlens</a></p>
+        </div>
+      </div>
+      <nav aria-label="Documentation">
+        <h2>Documentation</h2>
+        <ul>
+          <li><a href="commands.html">Commands</a></li>
+          <li><a href="usage.html">Usage</a></li>
+          <li><a href="ci.html">CI</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Project">
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://waxseal-srivtx.vercel.app">Live site</a></li>
+          <li><a href="https://github.com/srivtx/waxseal">Repository</a></li>
+          <li><a href="https://github.com/srivtx/waxseal/blob/main/LICENSE">MIT license</a></li>
+          <li><a href="https://github.com/srivtx/waxseal/issues">Issues</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer__meta">
+      <p>by svx · MIT licensed. Part of <a href="https://lenses-srivtx.vercel.app">Lenses</a> — offline accessibility and integrity tools.</p>
+      <a href="#top">Back to top</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/site.js" defer></script>
+</body>
+</html>

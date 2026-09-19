@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commands — waxseal</title>
+<meta name="description" content="Every waxseal command — keygen, seal, verify, proof-verify, and inspect — with its purpose and real output.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Commands — waxseal">
+<meta property="og:description" content="Every waxseal command with its purpose and real output: keygen, seal, verify, proof-verify, and inspect.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://waxseal-srivtx.vercel.app/commands.html">
+<meta property="og:image" content="https://waxseal-srivtx.vercel.app/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Commands — waxseal">
+<meta name="twitter:description" content="Every waxseal command with its purpose and real output: keygen, seal, verify, proof-verify, and inspect.">
+<meta name="twitter:image" content="https://waxseal-srivtx.vercel.app/assets/og.png">
+<link rel="canonical" href="https://waxseal-srivtx.vercel.app/commands.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b45309'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='white' stroke-width='2.2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='none' stroke='white' stroke-width='2.2'/%3E%3Ccircle cx='16' cy='16' r='1.8' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/lens.css">
+<link rel="stylesheet" href="assets/theme.css">
+<script>
+(function () {
+  try {
+    var stored = window.localStorage.getItem("waxseal-theme");
+    if (stored === "dark" || stored === "light") {
+      document.documentElement.setAttribute("data-theme", stored);
+    }
+  } catch (err) {}
+})();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="nav" id="top">
+  <div class="container nav__inner">
+    <a class="brand" href="index.html" aria-label="waxseal home">
+      <span class="brand__mark" aria-hidden="true">
+        <svg class="icon" viewBox="0 0 32 32" focusable="false">
+          <circle cx="16" cy="16" r="11.5"></circle>
+          <circle cx="16" cy="16" r="6.5"></circle>
+          <circle cx="16" cy="16" r="1.8" style="fill:currentColor;stroke:none"></circle>
+        </svg>
+      </span>
+      <span class="brand__name">waxseal</span>
+      <span class="brand__tag">WACZ integrity seal</span>
+    </a>
+
+    <nav class="nav__links" id="site-nav" aria-label="Sections">
+      <a href="commands.html">Commands</a>
+      <a href="usage.html">Usage</a>
+      <a href="ci.html">CI</a>
+      <a href="index.html#demo">Playground</a>
+      <a href="https://github.com/srivtx/waxseal">GitHub</a>
+    </nav>
+
+    <div class="nav__actions">
+      <button type="button" class="nav__toggle btn btn--ghost btn--sm" id="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+      </button>
+      <button type="button" class="btn btn--ghost btn--sm" id="theme-toggle" aria-pressed="false" aria-label="Switch to dark theme">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+        <span id="theme-toggle-text">Theme</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="container">
+    <div class="docs">
+      <nav class="docs__nav" aria-label="Documentation">
+        <h2>waxseal</h2>
+        <ul>
+          <li><a href="index.html">Overview</a></li>
+          <li><a href="commands.html" aria-current="page">Commands</a></li>
+          <li><a href="usage.html">Usage</a></li>
+          <li><a href="ci.html">CI</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </nav>
+
+      <article class="docs__body">
+        <div class="docs__head">
+          <p class="eyebrow">Reference</p>
+          <h1>The commands</h1>
+          <p>Five commands cover the whole lifecycle: make a key, seal an archive, verify it later, prove a single member, and inspect the archive's own datapackage chain. Signing and verification run locally against <code>node:crypto</code>.</p>
+        </div>
+
+        <h2>Commands and options</h2>
+        <div class="table-wrap">
+          <table>
+            <caption>Commands and options. Text in angle brackets is a placeholder.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Command</th>
+                <th scope="col">What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>waxseal keygen [--out &lt;base&gt;] [--force]</code></td>
+                <td>Generate an Ed25519 key pair (default base <code>waxseal-key</code>) → <code>&lt;base&gt;.pem</code> (private, PKCS#8) and <code>&lt;base&gt;.pub.pem</code> (public, SPKI). Refuses to overwrite unless <code>--force</code>/<code>--yes</code>.</td>
+              </tr>
+              <tr>
+                <td><code>waxseal seal &lt;archive.wacz&gt; [--key &lt;pem&gt;] [--out &lt;seal.json&gt;] [--proofs &lt;proofs.json&gt;] [--json]</code></td>
+                <td>Create a detached seal for an archive. With no <code>--key</code>, a new key pair is generated and written next to the archive, with a warning.</td>
+              </tr>
+              <tr>
+                <td><code>waxseal verify &lt;archive.wacz&gt; -s &lt;seal.json&gt; [--public-key &lt;pem|base64&gt;] [--root &lt;hex&gt;] [--json] [--member-only]</code></td>
+                <td>Verify an archive against a seal. Strict byte-level by default; <code>--member-only</code> allows a re-zip. The SPKI key fingerprint is always printed. Pass <code>--public-key</code> or <code>--root</code> to pin a trusted key or root; without one the seal is only self-consistent and is labelled <code>trusted: no</code>.</td>
+              </tr>
+              <tr>
+                <td><code>waxseal proof-verify [&lt;archive.wacz&gt;] --proofs &lt;proofs.json&gt; [--seal &lt;seal.json&gt;] [--path &lt;member&gt;] [--root &lt;hex&gt;] [--sha256 &lt;hex&gt;] [--json]</code></td>
+                <td>Verify Merkle inclusion proofs. With an archive, proofs are checked against its rebuilt root (or <code>--seal</code>/<code>--root</code>). Without an archive, pass <code>--root</code> or <code>--seal</code> plus the member's <code>--sha256</code> for a fully offline check. Omit <code>--path</code> to check every proof in the file.</td>
+              </tr>
+              <tr>
+                <td><code>waxseal inspect &lt;archive.wacz&gt; [--json]</code></td>
+                <td>Inspect members, datapackage digest status, and the Merkle root.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Run <code>waxseal --help</code> for the full list of options, or <code>waxseal --version</code> for the installed version.</p>
+
+        <h2>Sealing an archive</h2>
+        <p><code>seal</code> builds the Merkle root over the archive members and signs a canonical payload with the key. With <code>--proofs</code> it also emits one inclusion proof per member; with <code>--created-at</code> the seal is reproducible byte for byte.</p>
+        <div class="term" aria-label="waxseal seal output">
+          <div class="term__bar">
+            <span class="term__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="term__title">waxseal seal</span>
+          </div>
+          <pre class="term__body term__body--wrap"><span class="ln"><span class="p">$ </span><span class="cmd">waxseal seal capture.wacz --key archive-key.pem --out capture.seal.json</span></span><span class="ln"><span class="dim">archive:     </span>/tmp/opencode/demo.wacz</span><span class="ln"><span class="dim">seal:        </span>/tmp/opencode/refs/demo.seal.json</span><span class="ln"><span class="dim">root:        </span>7ce7902d6dc6619e28496d7c717bacfbfb36bc7982b6d424d8d1f11c9218fcf7</span><span class="ln"><span class="dim">memberCount: </span>2</span><span class="ln"><span class="dim">algorithm:   </span>ed25519</span><span class="ln"><span class="dim">signature:   </span>3D0VHjqpApz6TIVAmhlO/R6s...</span></pre>
+        </div>
+
+        <h2>Verifying a seal</h2>
+        <p><code>verify</code> rebuilds the root from the archive, checks the Ed25519 signature, and reports whether the seal is trusted. Strict byte-level is the default; <code>--member-only</code> tolerates a legitimate re-zip.</p>
+        <div class="term" aria-label="waxseal verify output">
+          <div class="term__bar">
+            <span class="term__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="term__title">waxseal verify</span>
+          </div>
+          <pre class="term__body term__body--wrap"><span class="ln"><span class="p">$ </span><span class="cmd">waxseal verify capture.wacz -s capture.seal.json --public-key archive-key.pub.pem</span></span><span class="ln"><span class="ok">OK</span></span><span class="ln"><span class="dim">root:        </span>7ce7902d6dc6619e28496d7c717bacfbfb36bc7982b6d424d8d1f11c9218fcf7</span><span class="ln"><span class="dim">signature:   </span><span class="ok">valid</span></span><span class="ln"><span class="dim">fingerprint: </span>sha256:8b3e7cbe526fdb46b70f4f3a8b2a3992475febd3f02f94a27a3b9395b2d3825c</span><span class="ln"><span class="dim">trusted:     </span><span class="warn">no</span><span class="dim"> — self-signed seal; pin it with --public-key or --root</span></span></pre>
+        </div>
+
+        <h2>Verifying an inclusion proof</h2>
+        <p><code>proof-verify</code> checks a member against the signed root. With an archive it rebuilds the root and rejects a tampered member; without one, pass <code>--root</code> or <code>--seal</code> plus the member's <code>--sha256</code> for a fully offline check. Omit <code>--path</code> to check every proof in the file.</p>
+
+        <h2>Inspecting an archive</h2>
+        <p><code>inspect</code> reports the members, the datapackage digest status, and the Merkle root without touching a key.</p>
+        <div class="term" aria-label="waxseal inspect output">
+          <div class="term__bar">
+            <span class="term__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="term__title">waxseal inspect</span>
+          </div>
+          <pre class="term__body term__body--wrap"><span class="ln"><span class="p">$ </span><span class="cmd">waxseal inspect capture.wacz</span></span><span class="ln"><span class="dim">archive:            </span>/tmp/opencode/demo.wacz</span><span class="ln"><span class="dim">datapackage digest: </span><span class="err">FAILED</span></span><span class="ln"><span class="dim">member count:       </span>2</span><span class="ln"><span class="dim">resource count:     </span>0</span><span class="ln"><span class="dim">merkle root:        </span>7ce7902d6dc6619e28496d7c717bacfbfb36bc7982b6d424d8d1f11c9218fcf7</span><span class="ln"><span class="dim">issue:              </span><span class="warn">missing datapackage.json</span></span></pre>
+        </div>
+
+        <h2>The trust model</h2>
+        <div class="prose">
+          <p>A seal always proves two things on its own: that the archive matches the committed Merkle root, and that the signer held the private key for the public key embedded in the seal. Because the seal carries its own key, that is only self-consistency — it does not make the signer trustworthy. To trust a seal you must pin <code>--public-key &lt;pem|base64&gt;</code> or the expected <code>--root &lt;hex&gt;</code> out of band; the SPKI fingerprint that <code>verify</code> always prints is the value to compare.</p>
+        </div>
+
+        <div class="docs__foot">
+          <a href="index.html">← Overview</a>
+          <a href="usage.html">Usage →</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 32 32" focusable="false">
+            <circle cx="16" cy="16" r="11.5"></circle>
+            <circle cx="16" cy="16" r="6.5"></circle>
+            <circle cx="16" cy="16" r="1.8" style="fill:currentColor;stroke:none"></circle>
+          </svg>
+        </span>
+        <div>
+          <p>waxseal</p>
+          <p class="muted">Detached Ed25519 seals for WACZ web archives.</p>
+          <p class="muted">The Lens suite: <a href="https://booklens-srivtx.vercel.app">booklens</a> · <a href="https://officelens-srivtx.vercel.app">officelens</a> · <a href="https://odflens-srivtx.vercel.app">odflens</a> · <a href="https://iconlens-srivtx.vercel.app">iconlens</a></p>
+        </div>
+      </div>
+      <nav aria-label="Documentation">
+        <h2>Documentation</h2>
+        <ul>
+          <li><a href="commands.html">Commands</a></li>
+          <li><a href="usage.html">Usage</a></li>
+          <li><a href="ci.html">CI</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Project">
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://waxseal-srivtx.vercel.app">Live site</a></li>
+          <li><a href="https://github.com/srivtx/waxseal">Repository</a></li>
+          <li><a href="https://github.com/srivtx/waxseal/blob/main/LICENSE">MIT license</a></li>
+          <li><a href="https://github.com/srivtx/waxseal/issues">Issues</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer__meta">
+      <p>by svx · MIT licensed. Part of <a href="https://lenses-srivtx.vercel.app">Lenses</a> — offline accessibility and integrity tools.</p>
+      <a href="#top">Back to top</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/site.js" defer></script>
+</body>
+</html>

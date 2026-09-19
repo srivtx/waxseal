@@ -45,7 +45,7 @@
 
 <header class="nav" id="top">
   <div class="container nav__inner">
-    <a class="brand" href="#top" aria-label="waxseal home">
+    <a class="brand" href="index.html" aria-label="waxseal home">
       <span class="brand__mark" aria-hidden="true">
         <svg class="icon" viewBox="0 0 32 32" focusable="false">
           <circle cx="16" cy="16" r="11.5"></circle>
@@ -58,11 +58,10 @@
     </a>
 
     <nav class="nav__links" id="site-nav" aria-label="Sections">
-      <a href="#gap">The gap</a>
-      <a href="#how">How it works</a>
-      <a href="#cli">CLI</a>
-      <a href="#demo">Try it</a>
-      <a href="#faq">FAQ</a>
+      <a href="commands.html">Commands</a>
+      <a href="usage.html">Usage</a>
+      <a href="ci.html">CI</a>
+      <a href="index.html#demo">Playground</a>
       <a href="https://github.com/srivtx/waxseal">GitHub</a>
     </nav>
 
@@ -88,284 +87,133 @@
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero__glow" aria-hidden="true"></div>
     <div class="container">
-      <div class="hero__inner">
-        <p class="hero__meta reveal"><span class="hero__dot" aria-hidden="true"></span> Ed25519 · Merkle inclusion proofs · offline verification</p>
-        <h1 id="hero-title" class="reveal">Detached Ed25519 seals for WACZ web archives.</h1>
-        <p class="hero__lede reveal">waxseal builds a deterministic Merkle root over every member of a WACZ web archive and signs it with Ed25519. It writes a detached <code>seal.json</code> that verifies offline, plus an inclusion proof so any single file can be shown to belong without shipping the archive.</p>
+      <div class="split">
+        <div class="split__copy">
+          <p class="eyebrow reveal">Offline · no server · CI-ready</p>
+          <h1 id="hero-title" class="reveal">Seal a web archive. Prove any file.</h1>
+          <p class="hero__lede reveal">waxseal seals a WACZ web archive with one detached, signed file. It builds a single fingerprint — a Merkle root — over every member and signs it with Ed25519, so anyone can verify the archive offline, or prove that one file belongs to it without shipping the whole archive.</p>
 
-        <div class="btn-row reveal">
-          <a class="btn btn--primary" href="#demo">
-            Try the live demo
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
-          </a>
-          <a class="btn btn--outline" href="https://github.com/srivtx/waxseal">View source on GitHub</a>
+          <div class="btn-row reveal">
+            <a class="btn btn--primary" href="#demo">
+              Try the live demo
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+            </a>
+            <a class="btn btn--outline" href="commands.html">See the commands</a>
+          </div>
+
+          <div class="install reveal">
+            <code class="install__cmd">curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh</code>
+            <button type="button" class="btn btn--outline btn--sm" data-copy="curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh">Copy</button>
+          </div>
+          <p class="install__note reveal">Installs the <code>waxseal</code> binary with Bun. It is not published to npm; <code>bunx github:srivtx/waxseal#main</code> runs it without installing. Signing and verification use only local <code>node:crypto</code>.</p>
         </div>
 
-        <div class="install reveal">
-          <code class="install__cmd">curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh</code>
-          <button type="button" class="btn btn--outline btn--sm" data-copy="curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh">Copy</button>
+        <div class="split__aside reveal">
+          <div class="term" aria-label="Example waxseal seal and verify run">
+            <div class="term__bar">
+              <span class="term__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="term__title">waxseal seal · verify</span>
+            </div>
+            <pre class="term__body term__body--wrap"><span class="ln"><span class="p">$ </span><span class="cmd">waxseal seal capture.wacz --key archive-key.pem --out capture.seal.json</span></span><span class="ln"><span class="dim">archive:     </span>/tmp/opencode/demo.wacz</span><span class="ln"><span class="dim">seal:        </span>/tmp/opencode/refs/demo.seal.json</span><span class="ln"><span class="dim">root:        </span>7ce7902d6dc6619e28496d7c717bacfbfb36bc7982b6d424d8d1f11c9218fcf7</span><span class="ln"><span class="dim">memberCount: </span>2</span><span class="ln"><span class="dim">algorithm:   </span>ed25519</span><span class="ln"><span class="dim">signature:   </span>3D0VHjqpApz6TIVAmhlO/R6s...</span><span class="ln"> </span><span class="ln"><span class="p">$ </span><span class="cmd">waxseal verify capture.wacz -s capture.seal.json --public-key archive-key.pub.pem</span></span><span class="ln"><span class="ok">OK</span></span><span class="ln"><span class="dim">root:        </span>7ce7902d6dc6619e28496d7c717bacfbfb36bc7982b6d424d8d1f11c9218fcf7</span><span class="ln"><span class="dim">signature:   </span><span class="ok">valid</span></span><span class="ln"><span class="dim">fingerprint: </span>sha256:8b3e7cbe526fdb46b70f4f3a8b2a3992475febd3f02f94a27a3b9395b2d3825c</span><span class="ln"><span class="dim">trusted:     </span><span class="warn">no</span><span class="dim"> — self-signed seal; pin it with --public-key or --root</span></span></pre>
+          </div>
         </div>
-        <p class="install__note reveal">Installs the <code>waxseal</code> binary with Bun. It is not published to npm; <code>bunx github:srivtx/waxseal#main</code> runs it without installing. Signing and verification use only local <code>node:crypto</code>.</p>
       </div>
     </div>
   </section>
 
-  <section class="section" id="gap" aria-labelledby="gap-title">
+  <section class="section" id="what" aria-labelledby="what-title">
     <div class="container">
-      <div class="section__head reveal">
-        <h2 id="gap-title">What the current WACZ tooling does not provide</h2>
-        <p>A WACZ already carries per-resource hashes in <code>datapackage.json</code> and <code>datapackage-digest.json</code>. What the ecosystem lacks is a detached, portable proof, and the existing tools each stop short of one.</p>
-      </div>
-
-      <div class="grid reveal">
-        <article class="card">
-          <h3>Validates the in-archive chain</h3>
-          <p>py-wacz checks that <code>datapackage-digest.json</code> matches <code>datapackage.json</code> and every resource hash and byte count. It is Python, and its check is bound to the ZIP it validates.</p>
-          <p class="card__meta"><a href="https://github.com/webrecorder/py-wacz">github.com/webrecorder/py-wacz</a></p>
-        </article>
-        <article class="card">
-          <h3>Reads and replays WACZ</h3>
-          <p>wabac.js is a JavaScript WACZ loader for replay tooling. It understands the archive format and provides no signing layer and no Merkle commitments.</p>
-          <p class="card__meta"><a href="https://github.com/webrecorder/wabac.js">github.com/webrecorder/wabac.js</a></p>
-        </article>
-        <article class="card">
-          <h3>Replay in the browser</h3>
-          <p>ReplayWeb.page serves and replays WACZ archives client-side. It is a reading and replay tool, not an integrity or provenance tool.</p>
-          <p class="card__meta"><a href="https://replayweb.page/">replayweb.page</a></p>
-        </article>
-        <article class="card">
-          <h3>Structural checks only</h3>
-          <p>waczerciser exercises ZIP structure and datapackage shape to catch malformed archives. It performs no cryptography and emits no signature.</p>
-          <p class="card__meta"><a href="https://github.com/webrecorder/waczerciser">github.com/webrecorder/waczerciser</a></p>
-        </article>
-      </div>
-
-      <div class="callout reveal" role="note" style="margin-top: 24px">
-        <h3>Four things waxseal adds</h3>
-        <ul>
-          <li><strong>A detached proof.</strong> The WACZ signature lives <em>inside</em> the ZIP it attests to, so it cannot be pinned, notarized, or distributed out of band. waxseal emits a separate <code>seal.json</code>.</li>
-          <li><strong>A Merkle root.</strong> Everything else is a flat, one-level hash chain, so there are no inclusion or consistency proofs.</li>
-          <li><strong>Ed25519.</strong> The spec and implementations use anonymous ECDSA or X.509 ECDSA.</li>
-          <li><strong>A TypeScript implementation.</strong> py-wacz is Python; wabac.js and ReplayWeb.page are read/replay-only; waczerciser has no crypto.</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="section" id="how" aria-labelledby="how-title">
-    <div class="container">
-      <div class="section__head reveal">
-        <h2 id="how-title">How the seal works</h2>
-        <p>The Merkle root is independent of how the ZIP was produced, so re-zipping the same logical content yields the same root. Each stage below is fixed and reproducible.</p>
-      </div>
-
-      <ol class="steps reveal">
-        <li class="step">
-          <h3>Digest every member</h3>
-          <p>Every file in the archive becomes a <code>(normalized path, content SHA-256)</code> pair. Paths are Unicode NFC, forward-slash, with any leading <code>./</code> stripped; absolute or <code>..</code> paths are rejected.</p>
-        </li>
-        <li class="step">
-          <h3>Sort and domain-separate</h3>
-          <p>Sort by normalized path, then hash each leaf with an explicit domain prefix so leaves and nodes can never be confused.</p>
-        </li>
-        <li class="step">
-          <h3>Promote and combine</h3>
-          <p>Pair nodes level by level; the last node of an odd level is carried up unchanged, never duplicated.</p>
-        </li>
-        <li class="step">
-          <h3>Sign the root</h3>
-          <p>Ed25519 signs a canonical JSON payload — the signature covers the root, member count, algorithm, <code>createdAt</code>, and the archive's byte hash (<code>archiveSha256</code>).</p>
-        </li>
-        <li class="step">
-          <h3>Verify offline</h3>
-          <p>Rebuild the root from the archive, check the signature, and check any inclusion proof — no network, no server.</p>
-        </li>
-      </ol>
-
-      <div class="card reveal" style="margin-top: 24px">
-        <h3>Merkle construction</h3>
-        <div class="code" role="img" aria-label="Path-sorted members are hashed into domain-separated leaves, odd nodes are promoted, and the nodes combine into one root that is signed with Ed25519.">
-<pre class="mono">leaves (path-sorted)                               root (one value)
-────────────────────                               ─────────────────
-archive/data.warc.gz  ─┐
-indexes/index.cdx     ─┼─▶ SHA-256("waxseal:leaf:" + path + ":" + sha256(content))
-pages/pages.jsonl     ─┘
-                          │  combine level by level
-                          ▼
-                       node = SHA-256("waxseal:node:" + left + ":" + right)
-                          │  odd level: the last node is promoted unchanged (never duplicated)
-                          ▼
-                       root ──▶ Ed25519 signature over
-                                root + memberCount + algorithm + createdAt + archiveSha256</pre>
+      <div class="band reveal">
+        <p class="band__label" id="what-title">What it does</p>
+        <div class="band__body">
+          <p class="band__lead">A portable integrity layer that sits on top of the WACZ members, rather than replacing the tools that read and replay them.</p>
+          <dl class="defgrid">
+            <div>
+              <dt>One deterministic Merkle root</dt>
+              <dd>A single root over path-sorted <code>(normalized path, content SHA-256)</code> pairs. Re-zipping the same logical content yields the same root.</dd>
+            </div>
+            <div>
+              <dt>Ed25519 signing</dt>
+              <dd>The root, member count, algorithm, <code>createdAt</code>, and the archive's byte hash are signed in one canonical payload.</dd>
+            </div>
+            <div>
+              <dt>Offline verification</dt>
+              <dd>Rebuild the root, check the signature, and check any proof — no network, no server. Signing and verifying use only local <code>node:crypto</code>.</dd>
+            </div>
+            <div>
+              <dt>Member-only proofs</dt>
+              <dd>One inclusion proof per member shows a single file belongs to the signed root without revealing the rest of the archive.</dd>
+            </div>
+            <div>
+              <dt>Trust pinning</dt>
+              <dd>Pin <code>--public-key</code> or <code>--root</code> out of band. The fingerprint is always printed, and <code>trusted: yes</code> appears only when the pin matches.</dd>
+            </div>
+            <div>
+              <dt>Reproducible seals</dt>
+              <dd>The same archive, key, and <code>--created-at</code> timestamp produce a byte-identical seal, so seals can be rebuilt and compared in CI.</dd>
+            </div>
+          </dl>
         </div>
-        <p class="muted" style="margin-top: 12px">Leaves → path-sorted → domain-separated leaf hashes → odd-node-promoted nodes → root. The waxseal root is <code>sha256-domain-separated-sorted</code>; an archive with no members commits to <code>SHA-256("waxseal:empty")</code>.</p>
-      </div>
-
-      <div class="callout reveal" role="note" style="margin-top: 24px">
-        <h3>Member-level vs byte-level</h3>
-        <p>Membership is a set of <code>(normalized path, content SHA-256)</code> pairs, so a member-level check tolerates a legitimate re-zip. <code>archiveSha256</code> pins the exact bytes instead: strict byte mode fails if the archive differs in any way — including appended trailing bytes that leave every member unchanged.</p>
-        <p>The CLI defaults to strict byte-level verification; <code>--member-only</code> relaxes it for reproducible re-packaging. The library default is member-level.</p>
       </div>
     </div>
   </section>
 
-  <section class="section" id="cli" aria-labelledby="cli-title">
+  <section class="section" id="start" aria-labelledby="start-title">
     <div class="container">
-      <div class="section__head reveal">
-        <h2 id="cli-title">Command-line interface</h2>
-        <p>Signing and verification run locally against <code>node:crypto</code>. Run <code>waxseal --help</code> for the full list, or <code>waxseal --version</code> for the installed version.</p>
-      </div>
-
-      <div class="table-wrap reveal">
-        <table>
-          <caption>Commands and options. Text in angle brackets is a placeholder.</caption>
-          <thead>
-            <tr>
-              <th scope="col">Command</th>
-              <th scope="col">What it does</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>waxseal keygen [--out &lt;base&gt;] [--force]</code></td>
-              <td>Generate an Ed25519 key pair (default base <code>waxseal-key</code>) → <code>&lt;base&gt;.pem</code> (private, PKCS#8) and <code>&lt;base&gt;.pub.pem</code> (public, SPKI). Refuses to overwrite unless <code>--force</code>/<code>--yes</code>.</td>
-            </tr>
-            <tr>
-              <td><code>waxseal seal &lt;archive.wacz&gt; [--key &lt;pem&gt;] [--out &lt;seal.json&gt;] [--proofs &lt;proofs.json&gt;] [--json]</code></td>
-              <td>Create a detached seal for an archive. With no <code>--key</code>, a new key pair is generated and written next to the archive, with a warning.</td>
-            </tr>
-            <tr>
-              <td><code>waxseal verify &lt;archive.wacz&gt; -s &lt;seal.json&gt; [--public-key &lt;pem|base64&gt;] [--root &lt;hex&gt;] [--json] [--member-only]</code></td>
-              <td>Verify an archive against a seal. Strict byte-level by default; <code>--member-only</code> allows a re-zip. The SPKI key fingerprint is always printed. Pass <code>--public-key</code> or <code>--root</code> to pin a trusted key or root; without one the seal is only self-consistent and is labelled <code>trusted: no</code>.</td>
-            </tr>
-            <tr>
-              <td><code>waxseal proof-verify [&lt;archive.wacz&gt;] --proofs &lt;proofs.json&gt; [--seal &lt;seal.json&gt;] [--path &lt;member&gt;] [--root &lt;hex&gt;] [--sha256 &lt;hex&gt;] [--json]</code></td>
-              <td>Verify Merkle inclusion proofs. With an archive, proofs are checked against its rebuilt root (or <code>--seal</code>/<code>--root</code>). Without an archive, pass <code>--root</code> or <code>--seal</code> plus the member's <code>--sha256</code> for a fully offline check. Omit <code>--path</code> to check every proof in the file.</td>
-            </tr>
-            <tr>
-              <td><code>waxseal inspect &lt;archive.wacz&gt; [--json]</code></td>
-              <td>Inspect members, datapackage digest status, and the Merkle root.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <pre class="code reveal"><code># 1. create a key pair
-waxseal keygen --out archive-key
-
-# 2. seal once, emit a seal and one inclusion proof per member
-waxseal seal capture.wacz --key archive-key.pem --out capture.seal.json --proofs capture.proofs.json
-
-# 3. verify later, fully offline, pinned to the public key
-waxseal verify capture.wacz -s capture.seal.json --public-key archive-key.pub.pem
-
-# 4. prove one member against the signed root, without the archive
-waxseal proof-verify --proofs capture.proofs.json --path archive/data.warc.gz --root &lt;hex-root&gt; --sha256 &lt;hex-content-hash&gt;</code></pre>
-
-      <div class="prose reveal" style="margin-top: 24px">
-        <p><strong>The trust model.</strong> A seal always proves two things on its own: that the archive matches the committed Merkle root, and that the signer held the private key for the public key embedded in the seal. Because the seal carries its own key, that is only self-consistency — it does not make the signer trustworthy. To trust a seal you must pin <code>--public-key &lt;pem|base64&gt;</code> or the expected <code>--root &lt;hex&gt;</code> out of band; the SPKI fingerprint that <code>verify</code> always prints is the value to compare.</p>
+      <div class="band reveal">
+        <p class="band__label" id="start-title">Quick start</p>
+        <div class="band__body">
+          <p class="band__lead">Make a key, seal the archive once, then verify it later — fully offline and pinned to the public key.</p>
+          <div class="term" aria-label="Quick start commands">
+            <div class="term__bar">
+              <span class="term__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="term__title">quick start</span>
+            </div>
+            <pre class="term__body term__body--wrap"><span class="ln"><span class="dim"># 1. create a key pair</span></span><span class="ln"><span class="p">$ </span><span class="cmd">waxseal keygen --out archive-key</span></span><span class="ln"> </span><span class="ln"><span class="dim"># 2. seal once, emit a seal and one inclusion proof per member</span></span><span class="ln"><span class="p">$ </span><span class="cmd">waxseal seal capture.wacz --key archive-key.pem --out capture.seal.json --proofs capture.proofs.json</span></span><span class="ln"> </span><span class="ln"><span class="dim"># 3. verify later, fully offline, pinned to the public key</span></span><span class="ln"><span class="p">$ </span><span class="cmd">waxseal verify capture.wacz -s capture.seal.json --public-key archive-key.pub.pem</span></span></pre>
+          </div>
+          <p>Every command, flag, exit code, and JSON field is in <a href="usage.html">Usage</a>.</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="section" id="security" aria-labelledby="security-title">
+  <section class="section" id="docs" aria-labelledby="docs-title">
     <div class="container">
-      <div class="section__head reveal">
-        <h2 id="security-title">Security model</h2>
-        <p>What a seal protects against, and what it deliberately does not.</p>
-      </div>
-
-      <div class="grid grid--2 reveal">
-        <article class="card">
-          <h3>What it does protect against</h3>
-          <ul>
-            <li>Any modification, addition, or removal of an archive member is detected against the committed Merkle root.</li>
-            <li>Tampering with the signed payload — root, member count, algorithm, <code>createdAt</code>, or <code>archiveSha256</code> — invalidates the Ed25519 signature.</li>
-            <li>With strict byte mode (the CLI default), any byte difference in the archive file, including appended trailing bytes, is detected.</li>
-            <li>An inclusion proof shows one member belongs to a root without revealing the rest of the archive.</li>
-            <li>Malformed or hostile archives fail safely: decompression is bounded (at most 65,535 members and 1 GiB uncompressed), and ZIP paths are normalized, with absolute or <code>..</code> paths rejected.</li>
-          </ul>
-        </article>
-        <article class="card">
-          <h3>What it does not protect against</h3>
-          <ul>
-            <li><strong>Key identity.</strong> A seal embeds its own public key, so it only proves possession of the matching private key. There is no PKI, no certificate, and no identity. Pin the key or root out of band to trust a seal.</li>
-            <li><strong>Time.</strong> <code>createdAt</code> is self-asserted; there is no trusted timestamp. Pair the root with a timestamping authority if you need a proven "existed before" time.</li>
-            <li><strong>Content meaning.</strong> A proof checks Merkle inclusion, not that the signer was honest about what a file contains.</li>
-            <li><strong>Comparison timing.</strong> The implementation makes no constant-time comparison claim. It is a local offline verifier, not a hardened network service.</li>
-          </ul>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="section" id="limits" aria-labelledby="limits-title">
-    <div class="container">
-      <div class="section__head reveal">
-        <h2 id="limits-title">What waxseal does not claim</h2>
-      </div>
-      <div class="callout reveal" role="note">
-        <ul>
-          <li>ZIP member order and metadata are not part of the sealed bytes; use strict byte mode when you need byte-for-byte attestation.</li>
-          <li>Ed25519 only — no X.509 or ECDSA.</li>
-          <li>The datapackage digest re-check overlaps py-wacz; waxseal is a portable proof layer on top, not a replacement.</li>
-          <li>No identity or trust model for the public key beyond pinning <code>--public-key</code> or <code>--root</code>.</li>
-          <li>No trusted timestamp: <code>createdAt</code> is self-asserted by the signer.</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="section" id="faq" aria-labelledby="faq-title">
-    <div class="container">
-      <div class="section__head reveal">
-        <h2 id="faq-title">FAQ</h2>
-      </div>
-      <div class="faq reveal">
-        <details>
-          <summary>Is anything uploaded when I use the demo?</summary>
-          <div class="faq__body"><p>No. The bundled Merkle and inclusion-proof code runs entirely in this tab. It hashes with a vendored JavaScript SHA-256 shim, not <code>node:crypto</code>, and makes no network requests. Reload the page and the state is gone.</p></div>
-        </details>
-        <details>
-          <summary>Does a valid seal prove who signed it?</summary>
-          <div class="faq__body"><p>No. It proves the signer held the private key matching the embedded public key, and that the archive matches the committed root. There is no identity or trust model for that key. Pin <code>--public-key</code> or <code>--root</code> to turn self-consistency into trust.</p></div>
-        </details>
-        <details>
-          <summary>Does it prove when the archive was sealed?</summary>
-          <div class="faq__body"><p>No trusted timestamp. <code>createdAt</code> is self-asserted by the signer. Pair the root with a timestamping authority if you need a proven "existed before" time.</p></div>
-        </details>
-        <details>
-          <summary>What happens if I re-zip the same content?</summary>
-          <div class="faq__body"><p>A member-level check tolerates it, because leaves are <code>(normalized path, content SHA-256)</code> pairs and the root is unchanged. Strict byte mode (<code>archiveSha256</code>) catches any byte difference, including appended trailing bytes that leave every member unchanged.</p></div>
-        </details>
-        <details>
-          <summary>How do I verify a single file fully offline?</summary>
-          <div class="faq__body"><p>Sealing with <code>--proofs</code> emits one inclusion proof per member, plus the root and each member's content SHA-256. Hand over one proof and run <code>waxseal proof-verify --proofs &lt;proofs.json&gt; --path &lt;member&gt; --root &lt;hex-root&gt; --sha256 &lt;hex-content-hash&gt;</code> — no archive and no network required.</p></div>
-        </details>
-        <details>
-          <summary>How does waxseal relate to py-wacz?</summary>
-          <div class="faq__body"><p>They are complementary. py-wacz validates the WACZ's own datapackage chain inside the archive; waxseal adds a detached, portable Merkle-and-Ed25519 proof layer on top of the same members.</p></div>
-        </details>
-        <details>
-          <summary>Why can't the browser demo sign?</summary>
-          <div class="faq__body"><p>Ed25519 key generation, signing, and signature verification require the CLI, which uses local <code>node:crypto</code>. The demo intentionally covers only the Merkle root and inclusion proofs, which run fully client-side.</p></div>
-        </details>
-        <details>
-          <summary>What happens with a malformed or oversized archive?</summary>
-          <div class="faq__body"><p>It fails safely. Extraction is bounded to 65,535 members and 1 GiB uncompressed, ZIP paths are normalized (Unicode NFC, leading <code>./</code> removed, absolute and <code>..</code> paths rejected), and the CLI reports a structured error instead of crashing.</p></div>
-        </details>
+      <div class="band reveal">
+        <p class="band__label" id="docs-title">Documentation</p>
+        <div class="band__body">
+          <p class="band__lead">The landing page is the pitch. The reference lives on four short pages.</p>
+          <dl class="defgrid">
+            <div>
+              <dt><a href="commands.html">Commands</a></dt>
+              <dd>Every command — keygen, seal, verify, proof-verify, and inspect — with its purpose and real output.</dd>
+            </div>
+            <div>
+              <dt><a href="usage.html">Usage</a></dt>
+              <dd>Install, every option from <code>--help</code>, examples, exit codes, and JSON output.</dd>
+            </div>
+            <div>
+              <dt><a href="ci.html">CI</a></dt>
+              <dd>Verify a seal in a pipeline, offline, with the exit code as the gate and a pinned public key.</dd>
+            </div>
+            <div>
+              <dt><a href="faq.html">FAQ</a></dt>
+              <dd>Scope, limitations, and how waxseal compares to the tools around it.</dd>
+            </div>
+          </dl>
+        </div>
       </div>
     </div>
   </section>
 
   <section class="section" id="demo" aria-labelledby="demo-title">
     <div class="container">
-      <div class="section__head reveal">
-        <h2 id="demo-title">Merkle root and inclusion proof</h2>
-        <p>This demo runs the real, bundled Merkle and inclusion-proof code in your browser. Enter one member per line as <code>path=content</code>, compute the deterministic root, and verify a proof. Nothing is uploaded.</p>
-      </div>
+      <div class="band reveal">
+        <p class="band__label" id="demo-title">Playground</p>
+        <div class="band__body">
+          <p class="band__lead">This demo runs the real, bundled Merkle and inclusion-proof code in your browser. Enter one member per line as <code>path=content</code>, compute the deterministic root, and verify a proof. Nothing is uploaded.</p>
 
-      <div class="callout reveal" role="note">
+      <div class="callout" role="note">
         <h3>Ed25519 key operations need the CLI</h3>
         <p>Ed25519 key generation, signing, and signature verification are not available in the browser demo; use the waxseal CLI for <code>keygen</code>, signing, and signature checks. The demo covers the Merkle root and inclusion proofs using a vendored SHA-256 shim, with no signing calls.</p>
       </div>
@@ -439,6 +287,8 @@ indexes/index.cdx=com,example)/ 20240101000000 {"url":"https://example.com"}</te
           </div>
         </div>
       </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -458,16 +308,17 @@ indexes/index.cdx=com,example)/ 20240101000000 {"url":"https://example.com"}</te
         <div>
           <p>waxseal</p>
           <p class="muted">Detached Ed25519 seals for WACZ web archives.</p>
+          <p class="muted">The Lens suite: <a href="https://booklens-srivtx.vercel.app">booklens</a> · <a href="https://officelens-srivtx.vercel.app">officelens</a> · <a href="https://odflens-srivtx.vercel.app">odflens</a> · <a href="https://iconlens-srivtx.vercel.app">iconlens</a></p>
         </div>
       </div>
 
-      <nav aria-label="The Lens suite">
-        <h2>The Lens suite</h2>
+      <nav aria-label="Documentation">
+        <h2>Documentation</h2>
         <ul>
-          <li><a href="https://booklens-srivtx.vercel.app">booklens</a></li>
-          <li><a href="https://officelens-srivtx.vercel.app">officelens</a></li>
-          <li><a href="https://odflens-srivtx.vercel.app">odflens</a></li>
-          <li><a href="https://iconlens-srivtx.vercel.app">iconlens</a></li>
+          <li><a href="commands.html">Commands</a></li>
+          <li><a href="usage.html">Usage</a></li>
+          <li><a href="ci.html">CI</a></li>
+          <li><a href="faq.html">FAQ</a></li>
         </ul>
       </nav>
 
