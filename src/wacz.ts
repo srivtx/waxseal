@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { createHash } from "node:crypto";
-import { unzipSync } from "fflate";
+import { unzipSync, type UnzipFileInfo } from "fflate";
 import type {
   DatapackageResource,
   MemberDigest,
@@ -8,6 +8,16 @@ import type {
 } from "./types.ts";
 
 const decoder = new TextDecoder();
+
+export interface UnzipLimits {
+  maxMembers: number;
+  maxUncompressedBytes: number;
+}
+
+export const DEFAULT_UNZIP_LIMITS: UnzipLimits = {
+  maxMembers: 65535,
+  maxUncompressedBytes: 1024 * 1024 * 1024,
+};
 
 export function sha256Hex(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -21,25 +31,132 @@ function digestOf(path: string, bytes: Uint8Array): MemberDigest {
   return { path, sha256: sha256Hex(bytes), size: bytes.length };
 }
 
-function digestsOf(files: Record<string, Uint8Array>): MemberDigest[] {
-  return Object.keys(files)
-    .map((path) => digestOf(path, files[path]!))
-    .sort((a, b) => comparePaths(a.path, b.path));
-}
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export function memberDigests(data: Uint8Array): MemberDigest[] {
-  return digestsOf(unzipSync(data));
+function isDirectoryEntry(name: string): boolean {
+  return name.endsWith("/");
 }
 
-export function inspectWacz(data: Uint8Array): WaczInspection {
+/**
+ * Canonical member path: Unicode NFC, forward slashes, no leading `./`, no
+ * absolute paths, and no `..` or empty segments. Throws for anything that
+ * cannot be a safe relative member path.
+ */
+export function normalizeMemberPath(raw: string): string {
+  let path = raw.normalize("NFC");
+  while (path.startsWith("./")) path = path.slice(2);
+
+  if (path === "") throw new Error(`empty member path: ${JSON.stringify(raw)}`);
+  if (path.startsWith("/")) {
+    throw new Error(`absolute member path: ${JSON.stringify(raw)}`);
+  }
+
+  const segments = path.split("/");
+  for (const segment of segments) {
+    if (segment === "") {
+      throw new Error(`empty path segment in member path: ${JSON.stringify(raw)}`);
+    }
+    if (segment === "." || segment === "..") {
+      throw new Error(`unsafe path segment in member path: ${JSON.stringify(raw)}`);
+    }
+  }
+
+  return path;
+}
+
+function extractZip(
+  data: Uint8Array,
+  limits: UnzipLimits = DEFAULT_UNZIP_LIMITS,
+): Record<string, Uint8Array> {
+  let memberCount = 0;
+  let totalUncompressed = 0;
+
+  const files = unzipSync(data, {
+    filter: (file: UnzipFileInfo): boolean => {
+      if (isDirectoryEntry(file.name)) return false;
+      memberCount += 1;
+      if (memberCount > limits.maxMembers) {
+        throw new Error(
+          `archive has more than ${limits.maxMembers} members`,
+        );
+      }
+      totalUncompressed += file.originalSize;
+      if (totalUncompressed > limits.maxUncompressedBytes) {
+        throw new Error(
+          `archive expands beyond ${limits.maxUncompressedBytes} bytes`,
+        );
+      }
+      return true;
+    },
+  });
+
+  let bytes = 0;
+  for (const content of Object.values(files)) bytes += content.length;
+  if (bytes > limits.maxUncompressedBytes) {
+    throw new Error(
+      `archive expands beyond ${limits.maxUncompressedBytes} bytes`,
+    );
+  }
+
+  return files;
+}
+
+interface ArchiveContents {
+  files: Record<string, Uint8Array>;
+  members: MemberDigest[];
+  issues: string[];
+}
+
+function readArchive(
+  data: Uint8Array,
+  limits: UnzipLimits = DEFAULT_UNZIP_LIMITS,
+): ArchiveContents {
+  const rawFiles = extractZip(data, limits);
+  const files: Record<string, Uint8Array> = {};
+  const members: MemberDigest[] = [];
   const issues: string[] = [];
-  let files: Record<string, Uint8Array>;
+
+  for (const rawPath of Object.keys(rawFiles)) {
+    let path: string;
+    try {
+      path = normalizeMemberPath(rawPath);
+    } catch (error) {
+      issues.push(errorMessage(error));
+      continue;
+    }
+    if (Object.hasOwn(files, path)) {
+      issues.push(`duplicate member path after normalization: ${path}`);
+      continue;
+    }
+    const bytes = rawFiles[rawPath]!;
+    files[path] = bytes;
+    members.push(digestOf(path, bytes));
+  }
+
+  members.sort((a, b) => comparePaths(a.path, b.path));
+  return { files, members, issues };
+}
+
+export function memberDigests(
+  data: Uint8Array,
+  limits: UnzipLimits = DEFAULT_UNZIP_LIMITS,
+): MemberDigest[] {
+  const { members, issues } = readArchive(data, limits);
+  if (issues.length > 0) {
+    throw new Error(`unsafe or malformed archive: ${issues.join("; ")}`);
+  }
+  return members;
+}
+
+export function inspectWacz(
+  data: Uint8Array,
+  limits: UnzipLimits = DEFAULT_UNZIP_LIMITS,
+): WaczInspection {
+  let contents: ArchiveContents;
   try {
-    files = unzipSync(data);
+    contents = readArchive(data, limits);
   } catch (error) {
     return {
       members: [],
@@ -49,7 +166,10 @@ export function inspectWacz(data: Uint8Array): WaczInspection {
     };
   }
 
-  const members = digestsOf(files);
+  const issues = [...contents.issues];
+  const files = contents.files;
+  const members = contents.members;
+
   const datapackageBytes = files["datapackage.json"];
   if (!datapackageBytes) {
     issues.push("missing datapackage.json");
@@ -92,8 +212,18 @@ export function inspectWacz(data: Uint8Array): WaczInspection {
         issues.push("resource missing path");
         continue;
       }
-      const member = files[resource.path];
-      if (!member) continue;
+      let normalizedPath: string;
+      try {
+        normalizedPath = normalizeMemberPath(resource.path);
+      } catch (error) {
+        issues.push(`resource ${resource.path}: ${errorMessage(error)}`);
+        continue;
+      }
+      const member = files[normalizedPath];
+      if (!member) {
+        issues.push(`resource ${resource.path}: missing from archive`);
+        continue;
+      }
 
       const actualHash = `sha256:${sha256Hex(member)}`;
       if (resource.hash !== undefined && resource.hash !== actualHash) {

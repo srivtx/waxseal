@@ -35,7 +35,11 @@ backports.
   ordering or normalization are security-relevant and reviewed as such.
 - **Verify, do not trust.** `waxseal verify` must reject a mismatched root, a
   bad signature, a missing member, and a proof that does not reproduce the
-  root. Signature checks use constant-time comparison where applicable.
+  root. A seal is only *self-consistent* until you pin a trusted
+  `--public-key` or `--root`; without one the CLI reports `trusted: no`. The
+  Ed25519 signature is checked by `node:crypto`; root and digest comparisons
+  are ordinary string equality over public, non-secret values, so they are not
+  constant-time and are not required to be.
 
 ## Reporting a vulnerability
 

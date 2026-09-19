@@ -1,4 +1,5 @@
 import {
+  createHash,
   createPrivateKey,
   createPublicKey,
   generateKeyPairSync,
@@ -25,6 +26,34 @@ export function publicKeyBase64(pem: string): string {
   const key = createPublicKey(pem);
   const der = key.export({ type: "spki", format: "der" });
   return Buffer.from(der).toString("base64");
+}
+
+/**
+ * Accepts either a PEM SPKI public key or a base64-encoded DER SPKI public key
+ * (the form stored in a seal) and returns its raw DER bytes.
+ */
+export function publicKeyDer(publicKey: string): Buffer {
+  const trimmed = publicKey.trim();
+  const key = trimmed.includes("-----BEGIN")
+    ? createPublicKey(trimmed)
+    : createPublicKey({
+        key: Buffer.from(trimmed, "base64"),
+        format: "der",
+        type: "spki",
+      });
+  return Buffer.from(key.export({ type: "spki", format: "der" }));
+}
+
+/**
+ * SHA-256 of the SPKI DER encoding, hex encoded. This is the value a user can
+ * pin out of band to identify a signing key independently of any seal.
+ */
+export function publicKeyFingerprint(publicKey: string): string {
+  return createHash("sha256").update(publicKeyDer(publicKey)).digest("hex");
+}
+
+export function publicKeyEquals(left: string, right: string): boolean {
+  return publicKeyDer(left).equals(publicKeyDer(right));
 }
 
 export function signData(data: Uint8Array, privateKeyPem: string): string {

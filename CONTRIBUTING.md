@@ -13,9 +13,11 @@ cd waxseal
 bun install
 ```
 
-Run the CLI from source while you work:
+Run the CLI from source while you work (generate an archive with
+`bun run make-fixtures` first, or use one of your own):
 
 ```bash
+bun run make-fixtures
 bun run src/cli.ts keygen --out /tmp/archive-key
 bun run src/cli.ts seal fixtures/default.wacz --key /tmp/archive-key.pem --out /tmp/capture.seal.json
 bun run src/cli.ts verify fixtures/default.wacz -s /tmp/capture.seal.json
@@ -34,12 +36,9 @@ than disabling a rule or test.
 
 ## Fixtures
 
-`fixtures/` holds the archives the tests run against. The default archive is
-generated, not hand-edited:
-
-```bash
-bun run make-fixtures
-```
+The tests build their archives in memory from `src/fixtures.ts`; no checked-in
+fixture archive is required. `bun run make-fixtures` writes
+`fixtures/default.wacz` for manual CLI use and creates the directory on demand.
 
 When you add behavior, extend `tests/merkle.test.ts` for tree and proof logic,
 `tests/seal.test.ts` for signing and verification, `tests/wacz.test.ts` for

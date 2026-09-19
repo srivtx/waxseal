@@ -1,7 +1,15 @@
-import type { MemberDigest, MerkleTree, Seal } from "./types.ts";
+import type {
+  MemberDigest,
+  MerkleTree,
+  ProofDocument,
+  ProofStep,
+  Seal,
+} from "./types.ts";
 import { buildMerkle, proveInclusion } from "./merkle.ts";
 import { publicKeyBase64, signData } from "./keys.ts";
 import { memberDigests, sha256Hex } from "./wacz.ts";
+
+export const PROOF_VERSION = 1 as const;
 
 export const SEAL_VERSION = 1 as const;
 export const SEAL_ALGORITHM = "ed25519" as const;
@@ -77,15 +85,29 @@ export function sealFromJson(text: string): Seal {
 
 export function createInclusionProofs(
   data: Uint8Array,
-): Record<string, string[]> {
+): Record<string, ProofStep[]> {
   const digests = memberDigests(data);
   const tree = buildMerkle(digests);
-  const proofs: Record<string, string[]> = {};
+  const proofs: Record<string, ProofStep[]> = {};
 
   for (const digest of digests) {
-    const proof = proveInclusion(tree, digest.path) ?? [];
-    proofs[digest.path] = proof.map((step) => JSON.stringify(step));
+    proofs[digest.path] = proveInclusion(tree, digest.path) ?? [];
   }
 
   return proofs;
+}
+
+export function createProofDocument(data: Uint8Array): ProofDocument {
+  const digests = memberDigests(data);
+  const tree = buildMerkle(digests);
+  const proofs: ProofDocument["proofs"] = {};
+
+  for (const digest of digests) {
+    proofs[digest.path] = {
+      sha256: digest.sha256,
+      steps: proveInclusion(tree, digest.path) ?? [],
+    };
+  }
+
+  return { version: PROOF_VERSION, root: tree.root, proofs };
 }

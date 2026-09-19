@@ -69,4 +69,27 @@ describe("buildMerkle", () => {
     const changed = digest("b.txt", "bravo-changed");
     expect(buildMerkle([a, b]).root).not.toBe(buildMerkle([a, changed]).root);
   });
+
+  test("matches a hard-coded known root for a fixed three-member vector", () => {
+    const vector: MemberDigest[] = [
+      {
+        path: "a.txt",
+        sha256: "24d5a8c909c5a2efb7d0d5e0c8bd1c1d0e2d6c1d1f5a5e3a7b6c9d0e1f2a3b4c",
+        size: 5,
+      },
+      {
+        path: "b.txt",
+        sha256: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        size: 5,
+      },
+      {
+        path: "c.txt",
+        sha256: "c3ab8ff13720e8ad9047dd39466b3c8974e592c2fa383d4a3960714caef0c4f2",
+        size: 7,
+      },
+    ];
+    expect(buildMerkle(vector).root).toBe(
+      "9d2b9f800326e650919e1754fe67585851462bc19ea640dd48f6ccf8042456c8",
+    );
+  });
 });

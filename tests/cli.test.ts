@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { strToU8, zipSync } from "fflate";
 import { buildWacz, defaultWacz } from "../src/fixtures.ts";
 import { createSeal } from "../src/seal.ts";
 import { verifySeal } from "../src/verify.ts";
@@ -253,6 +254,353 @@ describe("cli proof verification", () => {
       );
       expect(missing.exitCode).toBe(1);
       expect(missing.stderr).toContain("no proof for path");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli trust boundary", () => {
+  test("a seal verified with the wrong pinned key fails; the right one passes", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const keyA = join(dir, "a");
+      const keyB = join(dir, "b");
+      const sealPath = join(dir, "seal.json");
+      await Bun.write(archivePath, defaultWacz());
+      await runCli(["keygen", "--out", keyA], dir);
+      await runCli(["keygen", "--out", keyB], dir);
+      await runCli(
+        ["seal", archivePath, "--key", `${keyA}.pem`, "--out", sealPath],
+        dir,
+      );
+
+      const wrong = await runCli(
+        ["verify", archivePath, "-s", sealPath, "--public-key", `${keyB}.pub.pem`],
+        dir,
+      );
+      expect(wrong.exitCode).toBe(1);
+      expect(wrong.stdout).toContain("FAILED");
+      expect(wrong.stdout).toContain("fingerprint: sha256:");
+      expect(wrong.stdout).toContain("expectedPublicKey");
+
+      const right = await runCli(
+        ["verify", archivePath, "-s", sealPath, "--public-key", `${keyA}.pub.pem`],
+        dir,
+      );
+      expect(right.exitCode).toBe(0);
+      expect(right.stdout).toContain("trusted:     yes");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a seal verified with the wrong pinned root fails", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const keyBase = join(dir, "key");
+      const sealPath = join(dir, "seal.json");
+      await Bun.write(archivePath, defaultWacz());
+      await runCli(["keygen", "--out", keyBase], dir);
+      await runCli(
+        ["seal", archivePath, "--key", `${keyBase}.pem`, "--out", sealPath],
+        dir,
+      );
+
+      const bad = await runCli(
+        ["verify", archivePath, "-s", sealPath, "--root", "0".repeat(64)],
+        dir,
+      );
+      expect(bad.exitCode).toBe(1);
+      expect(bad.stdout).toContain("expectedRoot");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("an unpinned self-signed seal is labelled untrusted, and pinning rejects it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const forgedPath = join(dir, "forged.wacz");
+      const sealPath = join(dir, "forged.seal.json");
+      const trustedKey = join(dir, "trusted");
+      await Bun.write(
+        forgedPath,
+        buildWacz([{ path: "only.txt", data: "attacker archive" }]),
+      );
+      await runCli(["keygen", "--out", trustedKey], dir);
+
+      const seal = await runCli(["seal", forgedPath, "--out", sealPath], dir);
+      expect(seal.exitCode).toBe(0);
+
+      const unpinned = await runCli(["verify", forgedPath, "-s", sealPath], dir);
+      expect(unpinned.exitCode).toBe(0);
+      expect(unpinned.stdout).toContain("OK");
+      expect(unpinned.stdout).toContain("trusted:     no");
+      expect(unpinned.stdout).toContain("fingerprint: sha256:");
+
+      const pinned = await runCli(
+        ["verify", forgedPath, "-s", sealPath, "--public-key", `${trustedKey}.pub.pem`],
+        dir,
+      );
+      expect(pinned.exitCode).toBe(1);
+      expect(pinned.stdout).toContain("FAILED");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a seal with an unknown format is rejected", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const keyBase = join(dir, "key");
+      const sealPath = join(dir, "seal.json");
+      await Bun.write(archivePath, defaultWacz());
+      await runCli(["keygen", "--out", keyBase], dir);
+      await runCli(
+        ["seal", archivePath, "--key", `${keyBase}.pem`, "--out", sealPath],
+        dir,
+      );
+
+      const seal = JSON.parse(await Bun.file(sealPath).text()) as Record<
+        string,
+        unknown
+      >;
+      seal.version = 2;
+      await Bun.write(sealPath, JSON.stringify(seal));
+
+      const verify = await runCli(
+        ["verify", archivePath, "-s", sealPath, "--json"],
+        dir,
+      );
+      expect(verify.exitCode).toBe(1);
+      const parsed = JSON.parse(verify.stdout) as { ok: boolean; reasons: string[] };
+      expect(parsed.ok).toBe(false);
+      expect(parsed.reasons[0]).toContain("version");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli proof-verify anchored to a seal", () => {
+  test("proofs verify against seal.root, offline, and fail on tamper or wrong root", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const keyBase = join(dir, "key");
+      const sealPath = join(dir, "seal.json");
+      const proofsPath = join(dir, "proofs.json");
+      await Bun.write(archivePath, defaultWacz());
+      await runCli(["keygen", "--out", keyBase], dir);
+      await runCli(
+        ["seal", archivePath, "--key", `${keyBase}.pem`, "--out", sealPath],
+        dir,
+      );
+      await runCli(
+        ["seal", archivePath, "--key", `${keyBase}.pem`, "--proofs", proofsPath],
+        dir,
+      );
+
+      const document = JSON.parse(await Bun.file(proofsPath).text()) as {
+        root: string;
+        proofs: Record<string, { sha256: string; steps: unknown[] }>;
+      };
+      const member = "archive/data.warc.gz";
+      expect(document.root).toMatch(/^[0-9a-f]{64}$/);
+      expect(document.proofs[member]?.sha256).toMatch(/^[0-9a-f]{64}$/);
+
+      const anchored = await runCli(
+        ["proof-verify", archivePath, "--proofs", proofsPath, "--seal", sealPath],
+        dir,
+      );
+      expect(anchored.exitCode).toBe(0);
+
+      const offline = await runCli(
+        [
+          "proof-verify",
+          "--proofs",
+          proofsPath,
+          "--path",
+          member,
+          "--root",
+          document.root,
+          "--sha256",
+          document.proofs[member]!.sha256,
+        ],
+        dir,
+      );
+      expect(offline.exitCode).toBe(0);
+      expect(offline.stdout).toContain(member);
+
+      const wrongRoot = await runCli(
+        [
+          "proof-verify",
+          archivePath,
+          "--proofs",
+          proofsPath,
+          "--root",
+          "0".repeat(64),
+        ],
+        dir,
+      );
+      expect(wrongRoot.exitCode).toBe(1);
+
+      const tamperedProofs = join(dir, "tampered-proofs.json");
+      const tampered = structuredClone(document) as typeof document;
+      const steps = tampered.proofs[member]!.steps as Array<{
+        hash: string;
+        position: string;
+      }>;
+      if (steps.length > 0) {
+        steps[0]!.hash = "00".repeat(32);
+      }
+      await Bun.write(tamperedProofs, JSON.stringify(tampered));
+      const tamperedResult = await runCli(
+        ["proof-verify", archivePath, "--proofs", tamperedProofs],
+        dir,
+      );
+      if (steps.length > 0) {
+        expect(tamperedResult.exitCode).toBe(1);
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("an empty requested proof set is vacuously OK", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const emptyPath = join(dir, "empty.wacz");
+      const proofsPath = join(dir, "empty-proofs.json");
+      await Bun.write(emptyPath, zipSync({}));
+
+      const seal = await runCli(
+        ["seal", emptyPath, "--proofs", proofsPath, "--json"],
+        dir,
+      );
+      expect(seal.exitCode).toBe(0);
+
+      const verify = await runCli(
+        ["proof-verify", emptyPath, "--proofs", proofsPath, "--json"],
+        dir,
+      );
+      expect(verify.exitCode).toBe(0);
+      const parsed = JSON.parse(verify.stdout) as { ok: boolean; results: unknown[] };
+      expect(parsed.ok).toBe(true);
+      expect(parsed.results).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("malformed archives produce JSON failures, not raw crashes", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const malformedPath = join(dir, "malformed.wacz");
+      const keyBase = join(dir, "key");
+      const sealPath = join(dir, "seal.json");
+      const proofsPath = join(dir, "proofs.json");
+      await Bun.write(archivePath, defaultWacz());
+      await Bun.write(malformedPath, strToU8("this is not a zip"));
+      await runCli(["keygen", "--out", keyBase], dir);
+      await runCli(
+        ["seal", archivePath, "--key", `${keyBase}.pem`, "--out", sealPath],
+        dir,
+      );
+      await runCli(
+        ["seal", archivePath, "--key", `${keyBase}.pem`, "--proofs", proofsPath],
+        dir,
+      );
+
+      const verify = await runCli(
+        ["verify", malformedPath, "-s", sealPath, "--json"],
+        dir,
+      );
+      expect(verify.exitCode).toBe(1);
+      const parsed = JSON.parse(verify.stdout) as { ok: boolean; reasons: string[] };
+      expect(parsed.ok).toBe(false);
+      expect(parsed.reasons.length).toBeGreaterThan(0);
+
+      const proof = await runCli(
+        ["proof-verify", malformedPath, "--proofs", proofsPath, "--json"],
+        dir,
+      );
+      expect(proof.exitCode).toBe(1);
+      const proofParsed = JSON.parse(proof.stdout) as { ok: boolean };
+      expect(proofParsed.ok).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli robustness", () => {
+  test("keygen refuses to overwrite an existing key without --force", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const keyBase = join(dir, "key");
+      const first = await runCli(["keygen", "--out", keyBase], dir);
+      expect(first.exitCode).toBe(0);
+      const original = await Bun.file(`${keyBase}.pem`).text();
+
+      const again = await runCli(["keygen", "--out", keyBase], dir);
+      expect(again.exitCode).toBe(1);
+      expect(again.stderr).toContain("refusing to overwrite");
+      expect(await Bun.file(`${keyBase}.pem`).text()).toBe(original);
+
+      const forced = await runCli(["keygen", "--out", keyBase, "--force"], dir);
+      expect(forced.exitCode).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("an empty --out value is an error", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const result = await runCli(["keygen", "--out"], dir);
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("--out requires a value");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("--member-only=false does not relax strict byte checking", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const appendedPath = join(dir, "appended.wacz");
+      const keyBase = join(dir, "key");
+      const sealPath = join(dir, "seal.json");
+      const archive = defaultWacz();
+      await Bun.write(archivePath, archive);
+      const appended = new Uint8Array(archive.length + 1);
+      appended.set(archive);
+      appended[archive.length] = 0x78;
+      await Bun.write(appendedPath, appended);
+      await runCli(["keygen", "--out", keyBase], dir);
+      await runCli(
+        ["seal", archivePath, "--key", `${keyBase}.pem`, "--out", sealPath],
+        dir,
+      );
+
+      const strictFalse = await runCli(
+        ["verify", appendedPath, "-s", sealPath, "--member-only=false"],
+        dir,
+      );
+      expect(strictFalse.exitCode).toBe(1);
+
+      const memberOnly = await runCli(
+        ["verify", appendedPath, "-s", sealPath, "--member-only"],
+        dir,
+      );
+      expect(memberOnly.exitCode).toBe(0);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

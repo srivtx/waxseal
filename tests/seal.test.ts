@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { strToU8, zipSync } from "fflate";
-import type { ProofStep, Seal } from "../src/types.ts";
+import type { Seal } from "../src/types.ts";
 import {
   buildWacz,
   defaultWacz,
@@ -15,8 +15,17 @@ import {
   sealFromJson,
   sealToJson,
 } from "../src/seal.ts";
-import { verifySeal, verifySealJson } from "../src/verify.ts";
-import { generateKeyPair, publicKeyBase64 } from "../src/keys.ts";
+import {
+  validateSeal,
+  verifySeal,
+  verifySealJson,
+  verifySealSignature,
+} from "../src/verify.ts";
+import {
+  generateKeyPair,
+  publicKeyBase64,
+  publicKeyFingerprint,
+} from "../src/keys.ts";
 
 const CREATED_AT = "2024-01-01T00:00:00.000Z";
 
@@ -198,6 +207,167 @@ describe("createSeal / verifySeal", () => {
     const edited: Seal = { ...seal, archiveSha256: "0".repeat(64) };
     expect(verifySeal(edited, data).signatureOk).toBe(false);
   });
+
+  test("a malformed archive yields a structured failure, not a throw", () => {
+    const keys = generateKeyPair();
+    const seal = createSeal(
+      defaultWacz(),
+      keys.privateKeyPem,
+      keys.publicKeyPem,
+      CREATED_AT,
+    );
+
+    const result = verifySeal(
+      seal,
+      new TextEncoder().encode("this is not a zip"),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reasons[0]).toContain("failed to read archive");
+  });
+
+  test("strictBytes fails when the seal carries no archiveSha256", () => {
+    const keys = generateKeyPair();
+    const data = defaultWacz();
+    const seal = createSeal(
+      data,
+      keys.privateKeyPem,
+      keys.publicKeyPem,
+      CREATED_AT,
+    );
+    const withoutBytes: Seal = { ...seal };
+    delete withoutBytes.archiveSha256;
+
+    const result = verifySeal(withoutBytes, data, { strictBytes: true });
+    expect(result.ok).toBe(false);
+    expect(
+      result.reasons.some((reason) => reason.includes("no archiveSha256")),
+    ).toBe(true);
+  });
+
+  test("expectedPublicKey must match the embedded key", () => {
+    const keys = generateKeyPair();
+    const other = generateKeyPair();
+    const data = defaultWacz();
+    const seal = createSeal(
+      data,
+      keys.privateKeyPem,
+      keys.publicKeyPem,
+      CREATED_AT,
+    );
+
+    const good = verifySeal(seal, data, {
+      expectedPublicKey: keys.publicKeyPem,
+    });
+    expect(good.ok).toBe(true);
+    expect(good.expectedPublicKeyOk).toBe(true);
+    expect(good.trusted).toBe(true);
+
+    const bad = verifySeal(seal, data, {
+      expectedPublicKey: other.publicKeyPem,
+    });
+    expect(bad.ok).toBe(false);
+    expect(bad.expectedPublicKeyOk).toBe(false);
+  });
+
+  test("expectedRoot must match the computed root", () => {
+    const keys = generateKeyPair();
+    const data = defaultWacz();
+    const seal = createSeal(
+      data,
+      keys.privateKeyPem,
+      keys.publicKeyPem,
+      CREATED_AT,
+    );
+
+    expect(
+      verifySeal(seal, data, { expectedRoot: seal.root }).ok,
+    ).toBe(true);
+    const bad = verifySeal(seal, data, { expectedRoot: "0".repeat(64) });
+    expect(bad.ok).toBe(false);
+    expect(bad.expectedRootOk).toBe(false);
+  });
+
+  test("verify reports a fingerprint of the SPKI key", () => {
+    const keys = generateKeyPair();
+    const data = defaultWacz();
+    const seal = createSeal(
+      data,
+      keys.privateKeyPem,
+      keys.publicKeyPem,
+      CREATED_AT,
+    );
+
+    const result = verifySeal(seal, data);
+    expect(result.fingerprint).toBe(publicKeyFingerprint(keys.publicKeyPem));
+  });
+
+  test("a tampered member fails even when trusted against the same key", () => {
+    const keys = generateKeyPair();
+    const original = defaultWacz();
+    const seal = createSeal(
+      original,
+      keys.privateKeyPem,
+      keys.publicKeyPem,
+      CREATED_AT,
+    );
+
+    const tampered = buildWacz(
+      BASE_MEMBERS.map((member) =>
+        member.path === "indexes/index.cdx"
+          ? { ...member, data: "tampered index\n" }
+          : { ...member },
+      ),
+    );
+    expect(
+      verifySeal(seal, tampered, { expectedPublicKey: keys.publicKeyPem }).ok,
+    ).toBe(false);
+  });
+});
+
+describe("validateSeal", () => {
+  test("accepts a well-formed seal", () => {
+    const keys = generateKeyPair();
+    const seal = createSeal(
+      defaultWacz(),
+      keys.privateKeyPem,
+      keys.publicKeyPem,
+      CREATED_AT,
+    );
+    expect(validateSeal(JSON.parse(sealToJson(seal))).ok).toBe(true);
+    expect(verifySealSignature(seal)).toBe(true);
+  });
+
+  test("rejects null, arrays, and wrong-typed fields", () => {
+    expect(validateSeal(null).ok).toBe(false);
+    expect(validateSeal([]).ok).toBe(false);
+    expect(validateSeal({ version: 1 }).ok).toBe(false);
+    expect(validateSeal("seal").ok).toBe(false);
+  });
+
+  test("rejects unknown version, algorithm, and merkle constructions", () => {
+    const keys = generateKeyPair();
+    const seal = createSeal(
+      defaultWacz(),
+      keys.privateKeyPem,
+      keys.publicKeyPem,
+      CREATED_AT,
+    );
+    expect(validateSeal({ ...seal, version: 2 }).ok).toBe(false);
+    expect(validateSeal({ ...seal, algorithm: "rsa" }).ok).toBe(false);
+    expect(validateSeal({ ...seal, merkle: "sha256-flat" }).ok).toBe(false);
+  });
+
+  test("verifySealJson returns a structured failure for a null seal", () => {
+    const result = verifySealJson("null", defaultWacz());
+    expect(result.ok).toBe(false);
+    expect(result.reasons[0]).toContain("seal");
+  });
+
+  test("verifySealJson returns a structured failure for invalid JSON", () => {
+    const result = verifySealJson("{not json", defaultWacz());
+    expect(result.ok).toBe(false);
+    expect(result.reasons[0]).toContain("invalid seal JSON");
+  });
 });
 
 describe("createInclusionProofs", () => {
@@ -212,13 +382,10 @@ describe("createInclusionProofs", () => {
     );
 
     for (const digest of digests) {
-      const raw = proofs[digest.path];
-      expect(raw).toBeDefined();
-      const proof = (raw ?? []).map(
-        (step) => JSON.parse(step) as ProofStep,
-      );
+      const proof = proofs[digest.path];
+      expect(proof).toBeDefined();
       expect(
-        verifyInclusion(digest.path, digest.sha256, proof, root),
+        verifyInclusion(digest.path, digest.sha256, proof ?? [], root),
       ).toBe(true);
     }
   });

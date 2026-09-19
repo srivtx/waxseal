@@ -29,6 +29,17 @@ export interface ProofStep {
   position: "left" | "right";
 }
 
+export interface InclusionProof {
+  sha256: string;
+  steps: ProofStep[];
+}
+
+export interface ProofDocument {
+  version: 1;
+  root: string;
+  proofs: Record<string, InclusionProof>;
+}
+
 export interface Seal {
   version: 1;
   algorithm: "ed25519";
@@ -49,4 +60,8 @@ export interface VerifyResult {
   removed: string[];
   modified: string[];
   signatureOk: boolean;
+  expectedRootOk: boolean;
+  expectedPublicKeyOk: boolean;
+  trusted: boolean;
+  fingerprint?: string;
 }

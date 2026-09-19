@@ -11,14 +11,14 @@
 [![license](https://img.shields.io/badge/license-MIT-0f766e)](LICENSE)
 [![runtime](https://img.shields.io/badge/runtime-Bun-14151A?logo=bun&logoColor=white)](https://bun.sh)
 [![types](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![tests](https://img.shields.io/badge/tests-23-0f766e)](#testing)
+[![tests](https://img.shields.io/badge/tests-60-0f766e)](#testing)
 [![network](https://img.shields.io/badge/network-none-0f766e)](#privacy)
 
 </div>
 
 ---
 
-**Live site:** [waxseal](https://waxseal-srivtx.vercel.app)  ·  **Playground:** [https://waxseal-srivtx.vercel.app/#playground](https://waxseal-srivtx.vercel.app/#playground)  ·  **Source:** [github.com/srivtx/waxseal](https://github.com/srivtx/waxseal)
+**Live site:** [waxseal](https://waxseal-srivtx.vercel.app)  ·  **Demo:** [https://waxseal-srivtx.vercel.app/#demo](https://waxseal-srivtx.vercel.app/#demo)  ·  **Source:** [github.com/srivtx/waxseal](https://github.com/srivtx/waxseal)  ·  **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 ## What a WACZ is, and what is missing
 
@@ -44,8 +44,6 @@ without shipping the archive.
 
 ## Install
 
-`waxseal` is not published to npm. Install it from GitHub with the one-line script (requires [Bun](https://bun.sh)):
-
 ```bash
 # One-line install (installs the `waxseal` binary)
 curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh
@@ -61,6 +59,13 @@ waxseal seal archive.wacz
 bun add -d github:srivtx/waxseal
 ```
 
+`waxseal` is not published to npm: the one-line script installs the binary
+(requires [Bun](https://bun.sh)), and `bunx` runs it without installing.
+
+> The package `exports` map points at raw TypeScript (`src/index.ts`), not a
+> compiled bundle. It is intended for Bun, which runs `.ts` directly; a Node
+> project would need its own TypeScript loader (for example `tsx`).
+
 ## Usage
 
 ```bash
@@ -72,8 +77,9 @@ waxseal keygen --out archive-key
 waxseal seal capture.wacz --key archive-key.pem --out capture.seal.json
 waxseal seal capture.wacz --key archive-key.pem --proofs capture.proofs.json
 
-# 3. Verify it later, offline
-waxseal verify capture.wacz -s capture.seal.json
+# 3. Verify it later, offline, against a pinned key or root
+waxseal verify capture.wacz -s capture.seal.json --public-key archive-key.pub.pem
+waxseal verify capture.wacz -s capture.seal.json --root <hex-root>
 
 # 4. Inspect the archive's own datapackage chain
 waxseal inspect capture.wacz --json
@@ -82,20 +88,35 @@ waxseal inspect capture.wacz --json
 `verify` defaults to a **strict byte-level** check. Pass `--member-only` to
 allow a legitimate re-zip.
 
+A seal carries its own `publicKey`, so on its own it only proves internal
+consistency: `verify` prints `trusted: no` and the signature is checked against
+the embedded key. Pass `--public-key <pem|base64>` or `--root <hex>` to pin what
+you trust; `verify` then reports `trusted: yes` and fails if the archive does not
+match. The SHA-256 fingerprint of the SPKI key is always printed so you can pin
+it out of band.
+
 ### Prove a single file
 
 `seal` can also emit one inclusion proof per member. Hand someone a single proof
 and they can confirm that file is part of the sealed archive without the archive
-itself.
+itself. The proof file records the Merkle root and each member's content
+SHA-256.
 
 ```bash
-waxseal proof-verify capture.wacz --proofs capture.proofs.json --path archive/data.warc.gz
+# Prove a member against the archive, anchored to the seal's signed root
+waxseal proof-verify capture.wacz --proofs capture.proofs.json \
+  --path archive/data.warc.gz --seal capture.seal.json
+
+# Fully offline: no archive, just the proof, root, and content hash
+waxseal proof-verify --proofs capture.proofs.json \
+  --path archive/data.warc.gz --root <hex-root> --sha256 <hex-content-hash>
 ```
 
-`proof-verify` rebuilds the Merkle root from the archive and checks each
-requested proof against it. Omit `--path` to check every proof in the file, or
+`proof-verify` checks each requested proof against the seal root (or the root
+rebuilt from the archive). Omit `--path` to check every proof in the file, or
 add `--json` for machine-readable output. It exits `0` only when all requested
-proofs verify, and `1` when a proof fails or a `--path` is missing.
+proofs verify, and `1` when a proof fails or a `--path` is missing. An empty
+requested set is vacuously valid.
 
 Run `waxseal --help` (or `-h`) for the full command list and `waxseal --version`
 for the installed version.
@@ -127,9 +148,10 @@ repo. The live site is at
 **[https://waxseal-srivtx.vercel.app](https://waxseal-srivtx.vercel.app)**.
 
 The page embeds an interactive demo that runs the real Merkle and
-inclusion-proof code in the browser (Ed25519 key operations still require the
-CLI). It is static, makes no external requests, and needs no build at deploy
-time: `site/assets/demo.js` is committed.
+inclusion-proof code in the browser. In the browser it hashes with a vendored
+JavaScript SHA-256 shim, not `node:crypto`; Ed25519 key operations still
+require the CLI. The site is static, makes no external requests, and needs no
+build at deploy time: `site/assets/demo.js` is committed.
 
 ## Development
 
@@ -163,6 +185,9 @@ Then open `http://localhost:3000` (or the port your static server prints). Run
 The Merkle root is deterministic and independent of how the ZIP was produced.
 
 - **Path-sorted leaves.** Every member is a leaf, ordered by normalized path.
+  Normalization is Unicode NFC, forward-slash relative paths with any leading
+  `./` removed; directory entries are skipped, and absolute or `..` paths are
+  rejected.
 - **Domain-separated leaves.** `leaf = SHA-256("waxseal:leaf:" + path + ":" + sha256(content))`
 - **Domain-separated nodes.** `node = SHA-256("waxseal:node:" + left + ":" + right)`
 - **Odd-node promotion.** The last node of an odd level is carried up unchanged
@@ -197,7 +222,7 @@ need a proven "existed before" time.
 
 | Gate | Result |
 |---|---|
-| `bun test` | 23 tests |
+| `bun test` | 60 tests |
 | `bunx tsc --noEmit` | clean (strict) |
 | round trip | `keygen` → `seal` → `verify` succeeds; a tampered archive exits 1 |
 
@@ -217,7 +242,10 @@ No network code. Signing and verification use `node:crypto` locally.
 - Ed25519 only — no X.509 or ECDSA.
 - The datapackage digest re-check overlaps `py-wacz`; `waxseal` is not a
   replacement for it, it is a portable proof layer on top.
-- No identity/trust model for the public key.
+- No identity or trust model for the public key beyond pinning
+  `--public-key`/`--root`; a seal on its own is `trusted: no`.
+- Decompression is bounded (65,535 members, 1 GiB uncompressed) and member
+  paths are normalized; absolute or `..` paths are rejected.
 
 ## The suite
 
