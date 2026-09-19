@@ -23,6 +23,7 @@ Install $BIN from GitHub.
 
   curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | sh
   curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | sh -s <git-ref>
+  curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | sh -s -- --help
 
 <git-ref> may be a branch, tag, or commit (default: main).
 Requires Bun (https://bun.sh); installs into Bun's global bin directory.
