@@ -12,11 +12,11 @@ function comparePaths(a: string, b: string): number {
 }
 
 function leafHash(path: string, sha256: string): string {
-  return sha256Hex(utf8(`wacz-seal:leaf:${path}:${sha256}`));
+  return sha256Hex(utf8(`waxseal:leaf:${path}:${sha256}`));
 }
 
 function nodeHash(left: string, right: string): string {
-  return sha256Hex(utf8(`wacz-seal:node:${left}:${right}`));
+  return sha256Hex(utf8(`waxseal:node:${left}:${right}`));
 }
 
 export function buildMerkle(digests: MemberDigest[]): MerkleTree {
@@ -25,7 +25,7 @@ export function buildMerkle(digests: MemberDigest[]): MerkleTree {
 
   if (sorted.length === 0) {
     return {
-      root: sha256Hex(utf8("wacz-seal:empty")),
+      root: sha256Hex(utf8("waxseal:empty")),
       levels: [[]],
       leafOrder,
     };

@@ -32,7 +32,7 @@ describe("buildMerkle", () => {
 
   test("a single leaf root equals that leaf hash", () => {
     const tree = buildMerkle([a]);
-    const expected = sha256Hex(encoder.encode(`wacz-seal:leaf:a.txt:${a.sha256}`));
+    const expected = sha256Hex(encoder.encode(`waxseal:leaf:a.txt:${a.sha256}`));
     expect(tree.root).toBe(expected);
     expect(tree.levels[0]).toEqual([expected]);
   });

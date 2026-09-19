@@ -72,7 +72,7 @@ describe("library round trip", () => {
 
 describe("cli round trip", () => {
   test("keygen + seal + verify succeeds", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "wacz-seal-cli-"));
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
     try {
       const archivePath = join(dir, "archive.wacz");
       const keyBase = join(dir, "key");
@@ -105,7 +105,7 @@ describe("cli round trip", () => {
   });
 
   test("verify exits 1 for a tampered archive", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "wacz-seal-cli-"));
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
     try {
       const archivePath = join(dir, "archive.wacz");
       const tamperedPath = join(dir, "tampered.wacz");

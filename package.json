@@ -1,12 +1,12 @@
 {
-  "name": "wacz-seal",
+  "name": "waxseal",
   "version": "0.1.0",
-  "description": "Offline, detached Ed25519 seals and Merkle inclusion proofs for WACZ web archives.",
+  "description": "Detached Ed25519 Merkle seal for WACZ web archives. Sign an archive once, verify it offline anywhere; include membership proofs per file.",
   "type": "module",
   "module": "src/index.ts",
   "main": "src/index.ts",
   "bin": {
-    "wacz-seal": "src/cli.ts"
+    "waxseal": "src/cli.ts"
   },
   "license": "MIT",
   "files": [

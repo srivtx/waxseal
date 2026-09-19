@@ -12,14 +12,14 @@ import { verifySealJson } from "./verify.ts";
 import { inspectWacz } from "./wacz.ts";
 import { buildMerkle } from "./merkle.ts";
 
-const USAGE = `wacz-seal — detached Ed25519 seals for WACZ web archives
+const USAGE = `waxseal — detached Ed25519 seals for WACZ web archives
 
 Usage:
-  wacz-seal <command> [options]
+  waxseal <command> [options]
 
 Commands:
   keygen [--out <base>]                 Generate an Ed25519 key pair
-                                        (default base: wacz-seal-key)
+                                        (default base: waxseal-key)
   seal <archive.wacz> [--key <pem>] [--out <seal.json>] [--proofs <proofs.json>]
                                         Create a detached seal for an archive
   verify <archive.wacz> -s <seal.json> [--json] [--member-only]
@@ -97,7 +97,7 @@ function publicPemFromPrivate(privateKeyPem: string): string {
 }
 
 async function cmdKeygen(args: ParsedArgs): Promise<number> {
-  const out = getOption(args.options, "--out") ?? "wacz-seal-key";
+  const out = getOption(args.options, "--out") ?? "waxseal-key";
   const { publicKeyPem, privateKeyPem } = generateKeyPair();
 
   await Bun.write(`${out}.pem`, privateKeyPem);
