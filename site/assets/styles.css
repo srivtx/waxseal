@@ -284,19 +284,6 @@ a:hover {
   text-wrap: balance;
 }
 
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  margin: 0 0 var(--s-3);
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-}
-
 .lede {
   max-width: 62ch;
   margin: 0;
@@ -640,29 +627,6 @@ a:hover {
   z-index: 1;
 }
 
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  margin: 0 0 var(--s-5);
-  padding: 5px 12px 5px 8px;
-  border: 1px solid var(--accent-line);
-  border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--accent-soft) 80%, transparent);
-  color: var(--body);
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.hero-badge-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-  animation: wax-pulse 2.6s ease-in-out infinite;
-}
-
 .hero h1 {
   max-width: 17ch;
   margin: 0 0 var(--s-5);
@@ -679,31 +643,15 @@ a:hover {
   color: var(--body);
 }
 
-.install-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-3);
-  max-width: 100%;
-  margin: 0 0 var(--s-6);
-  padding: 7px 7px 7px 16px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-pill);
-  background: var(--card);
-  box-shadow: var(--shadow-sm);
-}
-
-.install-cmd {
-  font-family: var(--font-mono);
+.install-note {
+  max-width: 62ch;
+  margin: var(--s-4) 0 0;
+  color: var(--mute);
   font-size: 0.86rem;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.install-cmd::before {
-  content: "$ ";
-  color: var(--accent);
+.hero .install-note {
+  margin-bottom: var(--s-6);
 }
 
 .actions {
@@ -713,38 +661,8 @@ a:hover {
   gap: var(--s-3);
 }
 
-.trust-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-3) var(--s-5);
-  margin: var(--s-7) 0 0;
-  padding: var(--s-5) 0 0;
-  border-top: 1px solid var(--hairline);
-  list-style: none;
-}
-
-.trust-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  color: var(--mute);
-  font-size: 0.82rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
-.trust-item::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 1px;
-  transform: rotate(45deg);
-  background: var(--accent);
-  opacity: 0.8;
-}
-
 /* ==========================================================================
-   6. BUTTONS / CHIPS / BADGES
+   6. BUTTONS
    ========================================================================== */
 
 .btn {
@@ -826,100 +744,8 @@ a:hover {
   animation: wax-shimmer 0.85s ease-out;
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  padding: 5px 12px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-pill);
-  background: var(--soft);
-  color: var(--mute);
-  font-family: var(--font-mono);
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-
-.chip.is-ok {
-  color: var(--success);
-  border-color: color-mix(in srgb, var(--success) 45%, transparent);
-  background: var(--success-soft);
-}
-
-.chip.is-warn {
-  color: var(--warning);
-  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
-  background: var(--warning-soft);
-}
-
-.chip.is-err {
-  color: var(--error);
-  border-color: color-mix(in srgb, var(--error) 45%, transparent);
-  background: var(--error-soft);
-}
-
-.chip.is-info {
-  color: var(--info);
-  border-color: color-mix(in srgb, var(--info) 45%, transparent);
-  background: var(--info-soft);
-}
-
-.badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
 /* ==========================================================================
-   7. STAT BAND
-   ========================================================================== */
-
-.stat-band {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--hairline);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  background: var(--card);
-  box-shadow: var(--shadow-sm);
-}
-
-.stat {
-  padding: clamp(20px, 3vw, 30px);
-  border-left: 1px solid var(--hairline);
-}
-
-.stat:first-child {
-  border-left: 0;
-}
-
-.stat-value {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-label {
-  display: block;
-  margin-top: var(--s-2);
-  color: var(--mute);
-  font-size: 0.82rem;
-  line-height: 1.4;
-}
-
-/* ==========================================================================
-   8. CARDS
+   7. CARDS
    ========================================================================== */
 
 .card-grid {
@@ -949,14 +775,6 @@ a:hover {
   transform: translateY(-3px);
   border-color: var(--accent-line);
   box-shadow: var(--shadow-md);
-}
-
-.card-tag {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--accent);
 }
 
 .card h3 {
@@ -1812,16 +1630,6 @@ pre.code .copy-btn {
   }
 }
 
-@keyframes wax-pulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 @keyframes wax-shimmer {
   0% {
     transform: translateX(-100%);
@@ -1907,45 +1715,11 @@ pre.code .copy-btn {
     padding-inline: 14px;
     font-size: 0.95rem;
   }
-
-  .stat-band {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .stat:nth-child(3) {
-    border-left: 0;
-  }
-
-  .stat:nth-child(1),
-  .stat:nth-child(2) {
-    border-bottom: 1px solid var(--hairline);
-  }
 }
 
 @media (max-width: 560px) {
-  .stat-band {
-    grid-template-columns: 1fr;
-  }
-
-  .stat {
-    border-left: 0;
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  .stat:last-child {
-    border-bottom: 0;
-  }
-
   .footer-grid {
     grid-template-columns: 1fr;
-  }
-
-  .install-chip {
-    width: 100%;
-  }
-
-  .install-cmd {
-    flex: 1;
   }
 }
 
@@ -1975,8 +1749,7 @@ pre.code .copy-btn {
     scroll-behavior: auto !important;
   }
 
-  .glow-layer,
-  .hero-badge-dot {
+  .glow-layer {
     animation: none;
   }
 

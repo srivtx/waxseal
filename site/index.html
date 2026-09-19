@@ -6,7 +6,7 @@
     <title>waxseal — detached Ed25519 Merkle seal for WACZ web archives</title>
     <meta
       name="description"
-      content="waxseal adds a detached Ed25519 Merkle seal to WACZ web archives. Sign once and verify offline anywhere, with an inclusion proof for any single file. No network, no server."
+      content="waxseal adds a detached Ed25519 Merkle seal to WACZ web archives. One deterministic root covers every archive member, and any single file can be proven without shipping the archive. Verification runs offline against node:crypto."
     />
     <meta name="theme-color" content="#0a0908" />
     <meta name="color-scheme" content="dark light" />
@@ -76,28 +76,31 @@
           <span class="glow-layer glow-b"></span>
         </div>
         <div class="wrap hero-inner">
-          <p class="hero-badge">
-            <span class="hero-badge-dot" aria-hidden="true"></span>
-            Detached seal · no network · verify offline
-          </p>
-          <h1 id="hero-title">Seal a WACZ once. Prove any file, anywhere.</h1>
+          <h1 id="hero-title">Detached Ed25519 seals for WACZ web archives</h1>
           <p class="lede">
-            waxseal adds a detached Ed25519 Merkle seal to WACZ web archives — a
-            canonical root over every archive member, signed once and verifiable
-            offline with no network and no server, plus an inclusion proof for any
-            single file.
+            waxseal builds a deterministic Merkle root over every member of a
+            WACZ web archive and signs that root with Ed25519. It writes a
+            detached <code class="code">seal.json</code> that verifies offline
+            against <code class="code">node:crypto</code>, and it emits an
+            inclusion proof for any single file. The project is MIT licensed
+            and written in TypeScript for Bun; verification uses only local
+            <code class="code">node:crypto</code> calls.
           </p>
 
-          <p class="install-chip">
-            <span class="install-cmd" id="install-cmd">bun install</span>
-            <button
-              type="button"
-              class="copy-btn"
-              data-copy="bun install"
-              aria-label="Copy install command"
-            >
-              Copy
-            </button>
+          <pre class="code"><code># One-line install (installs the `waxseal` binary)
+curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh
+
+# Or run once, without installing
+bunx github:srivtx/waxseal seal archive.wacz
+
+# Install globally
+bun add -g github:srivtx/waxseal
+waxseal seal archive.wacz
+
+# Add to a project as a dev dependency
+bun add -d github:srivtx/waxseal</code></pre>
+          <p class="install-note">
+            waxseal is not published to npm. Install it with the one-line script, or run it without installing.
           </p>
 
           <div class="actions">
@@ -106,37 +109,6 @@
               >View on GitHub</a
             >
           </div>
-
-          <ul class="trust-row">
-            <li class="trust-item">Deterministic path-sorted Merkle root</li>
-            <li class="trust-item">Ed25519 detached signature</li>
-            <li class="trust-item">No network calls</li>
-            <li class="trust-item">MIT licensed</li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ================= STAT BAND ================= -->
-      <section class="section" aria-label="waxseal at a glance">
-        <div class="wrap">
-          <ul class="stat-band reveal">
-            <li class="stat">
-              <span class="stat-value">SHA-256</span>
-              <span class="stat-label">Domain-separated Merkle root</span>
-            </li>
-            <li class="stat">
-              <span class="stat-value">Ed25519</span>
-              <span class="stat-label">Detached signature over the root</span>
-            </li>
-            <li class="stat">
-              <span class="stat-value">log₂ n</span>
-              <span class="stat-label">Inclusion proof size per member</span>
-            </li>
-            <li class="stat">
-              <span class="stat-value">0</span>
-              <span class="stat-label">Network requests to verify</span>
-            </li>
-          </ul>
         </div>
       </section>
 
@@ -144,31 +116,29 @@
       <section class="section" id="gap" aria-labelledby="gap-title">
         <div class="wrap">
           <div class="section-head reveal">
-            <p class="eyebrow">The gap</p>
             <h2 class="section-title" id="gap-title">
-              A proof that travels with the archive, not inside it
+              What the current WACZ tooling does not provide
             </h2>
             <p class="lede">
               A WACZ already carries per-resource hashes in
               <code class="code">datapackage.json</code> and
               <code class="code">datapackage-digest.json</code>. What the
-              ecosystem lacks is a detached, portable proof — and the incumbents
-              each stop short of one.
+              ecosystem lacks is a detached, portable proof, and the existing
+              tools each stop short of one.
             </p>
           </div>
 
           <div class="card-grid reveal">
             <article class="card">
-              <p class="card-tag">py-wacz</p>
               <h3>Validates the in-archive chain</h3>
               <p>
-                Checks that <code class="code">datapackage-digest.json</code>
-                matches <code class="code">datapackage.json</code> and every
-                resource hash and byte count. Strong, Python, and bound to the
+                py-wacz checks that
+                <code class="code">datapackage-digest.json</code> matches
+                <code class="code">datapackage.json</code> and every resource
+                hash and byte count. It is Python, and its check is bound to the
                 ZIP it validates.
               </p>
               <div class="card-foot">
-                <span class="chip is-err"><span class="badge-dot"></span>no detached proof</span>
                 <a class="card-src" href="https://github.com/webrecorder/py-wacz"
                   >source</a
                 >
@@ -176,15 +146,13 @@
             </article>
 
             <article class="card">
-              <p class="card-tag">wabac.js</p>
               <h3>Reads and replays WACZ</h3>
               <p>
-                A JavaScript WACZ loader for replay tooling. It understands the
-                archive format but has no signing layer and no Merkle
-                commitments.
+                wabac.js is a JavaScript WACZ loader for replay tooling. It
+                understands the archive format and provides no signing layer and
+                no Merkle commitments.
               </p>
               <div class="card-foot">
-                <span class="chip is-err"><span class="badge-dot"></span>no signing</span>
                 <a
                   class="card-src"
                   href="https://github.com/webrecorder/wabac.js"
@@ -194,27 +162,25 @@
             </article>
 
             <article class="card">
-              <p class="card-tag">ReplayWeb.page</p>
               <h3>Replay in the browser</h3>
               <p>
-                Serves and replays WACZ archives client-side. It is a
-                read/replay experience, not an integrity or provenance tool.
+                ReplayWeb.page serves and replays WACZ archives client-side. It
+                is a reading and replay tool, not an integrity or provenance
+                tool.
               </p>
               <div class="card-foot">
-                <span class="chip is-err"><span class="badge-dot"></span>no crypto layer</span>
                 <a class="card-src" href="https://replayweb.page/">source</a>
               </div>
             </article>
 
             <article class="card">
-              <p class="card-tag">waczerciser</p>
               <h3>Structural checks only</h3>
               <p>
-                Exercises ZIP structure and datapackage shape to catch malformed
-                archives. It performs no cryptography and emits no signature.
+                waczerciser exercises ZIP structure and datapackage shape to
+                catch malformed archives. It performs no cryptography and emits
+                no signature.
               </p>
               <div class="card-foot">
-                <span class="chip is-warn"><span class="badge-dot"></span>no cryptography</span>
                 <a
                   class="card-src"
                   href="https://github.com/webrecorder/waczerciser"
@@ -253,7 +219,6 @@
       <section class="section" id="how" aria-labelledby="how-title">
         <div class="wrap">
           <div class="section-head reveal">
-            <p class="eyebrow">How it works</p>
             <h2 class="section-title" id="how-title">
               One deterministic root over every member
             </h2>
@@ -389,8 +354,7 @@
       <section class="section" id="cli" aria-labelledby="cli-title">
         <div class="wrap">
           <div class="section-head reveal">
-            <p class="eyebrow">CLI reference</p>
-            <h2 class="section-title" id="cli-title">Five commands, offline</h2>
+            <h2 class="section-title" id="cli-title">Command-line interface</h2>
             <p class="lede">
               Signing and verification run locally against
               <code class="code">node:crypto</code>. Run
@@ -535,9 +499,8 @@ waxseal verify capture.wacz -s capture.seal.json</code></pre>
       <section class="section" id="demo" aria-labelledby="demo-title">
         <div class="wrap">
           <div class="section-head reveal">
-            <p class="eyebrow">Try it</p>
             <h2 class="section-title" id="demo-title">
-              Compute a real root in your browser
+              Merkle root and inclusion proof demo
             </h2>
             <p class="lede">
               This demo runs the real, bundled Merkle and inclusion-proof code.
@@ -657,7 +620,6 @@ indexes/index.cdx=com,example)/ 20240101000000 {"url":"https://example.com"}</te
       <section class="section" id="limits" aria-labelledby="limits-title">
         <div class="wrap">
           <div class="section-head reveal">
-            <p class="eyebrow">Honest limits</p>
             <h2 class="section-title" id="limits-title">
               What waxseal does not claim
             </h2>
@@ -691,8 +653,9 @@ indexes/index.cdx=com,example)/ 20240101000000 {"url":"https://example.com"}</te
       <section class="section" id="faq" aria-labelledby="faq-title">
         <div class="wrap">
           <div class="section-head reveal">
-            <p class="eyebrow">Questions</p>
-            <h2 class="section-title" id="faq-title">Frequently asked</h2>
+            <h2 class="section-title" id="faq-title">
+              Frequently asked questions
+            </h2>
           </div>
 
           <div class="faq reveal">
@@ -792,8 +755,8 @@ indexes/index.cdx=com,example)/ 20240101000000 {"url":"https://example.com"}</te
               </span>
             </a>
             <p class="footer-note">
-              A detached Ed25519 Merkle seal for WACZ web archives. Sign once,
-              verify offline anywhere, prove any single file.
+              A detached Ed25519 Merkle seal for WACZ web archives, with an
+              inclusion proof for any single member.
             </p>
           </div>
 
