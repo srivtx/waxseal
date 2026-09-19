@@ -49,7 +49,7 @@ without shipping the archive.
 curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh
 
 # Or run once, without installing
-bunx github:srivtx/waxseal seal archive.wacz
+bunx github:srivtx/waxseal#main seal archive.wacz
 
 # Install globally
 bun add -g github:srivtx/waxseal
