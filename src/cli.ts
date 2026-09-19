@@ -31,15 +31,23 @@ Commands:
                                         trusted key or root; without one the
                                         seal is only self-consistent. The SPKI
                                         key fingerprint is always printed.
+                                        "trusted" is reported only when the pin
+                                        actually matches; a --root pin attests
+                                        content, not provenance (pin
+                                        --public-key for that).
                                         (default: strict byte-level check;
                                         --member-only allows a re-zip)
   proof-verify [<archive.wacz>] --proofs <proofs.json> [--seal <seal.json>] [--path <member>] [--root <hex>] [--sha256 <hex>] [--json]
                                         Verify Merkle inclusion proofs.
-                                        With an archive, proofs are checked
-                                        against its rebuilt root (or --seal /
-                                        --root); without one, pass --root or
-                                        --seal and the member's content hash
-                                        (or use a proof file that records it)
+                                        With an archive, its rebuilt root must
+                                        match the root declared in the proofs
+                                        file (or --seal / --root), so a
+                                        tampered member fails. Without an
+                                        archive, pass --root or --seal and the
+                                        member's content hash (or use a proof
+                                        file that records it). A proofs file
+                                        with no root needs --seal or --root;
+                                        otherwise the check fails closed
   inspect <archive.wacz> [--json]       Inspect members, digest status, root
 
 Options:
@@ -316,10 +324,26 @@ async function cmdVerify(args: ParsedArgs): Promise<number> {
     `fingerprint: sha256:${result.fingerprint ?? "(unavailable)"}`,
   );
   if (result.trusted) {
-    console.log("trusted:     yes (pinned by --public-key/--root)");
+    console.log(
+      publicKey === undefined
+        ? "trusted:     yes (content pinned by --root)"
+        : "trusted:     yes (pinned by --public-key)",
+    );
+  } else if (publicKey !== undefined || expectedRoot !== undefined) {
+    const pinMatched = result.expectedRootOk && result.expectedPublicKeyOk;
+    console.log(
+      pinMatched
+        ? "trusted:     no — pin matched but the seal is not valid"
+        : "trusted:     no — pin did not match",
+    );
   } else {
     console.log(
       "trusted:     no — self-signed seal; pin it with --public-key or --root",
+    );
+  }
+  if (expectedRoot !== undefined && publicKey === undefined) {
+    console.log(
+      "provenance:  not checked (root-only pin attests content, not an author)",
     );
   }
   for (const reason of result.reasons) {
@@ -473,14 +497,17 @@ async function cmdProofVerify(args: ParsedArgs): Promise<number> {
   }
 
   let digestByPath: Map<string, string> | undefined;
+  let archiveRoot: string | undefined;
   let root: string | undefined;
+  let anchor: string | undefined;
   const reasons: string[] = [];
+  const declaredRoot = document.root;
 
   if (archive) {
     try {
       const digests = memberDigests(await readBytes(archive));
       digestByPath = new Map(digests.map((d) => [d.path, d.sha256]));
-      root = buildMerkle(digests).root;
+      archiveRoot = buildMerkle(digests).root;
     } catch (error) {
       return failure(`proof-verify: ${errorMessage(error)}`);
     }
@@ -496,26 +523,32 @@ async function cmdProofVerify(args: ParsedArgs): Promise<number> {
       if (!verifySealSignature(validation.seal)) {
         return failure("proof-verify: seal signature verification failed");
       }
-      if (root !== undefined && root !== validation.seal.root) {
-        reasons.push(
-          `archive merkle root ${root} does not match seal root ${validation.seal.root}`,
-        );
-      }
       root = validation.seal.root;
+      anchor = `seal root ${validation.seal.root}`;
     } catch (error) {
       return failure(`proof-verify: failed to read ${sealPath}: ${errorMessage(error)}`);
     }
   } else if (rootOption !== undefined) {
-    if (root !== undefined && root !== rootOption) {
-      reasons.push(
-        `archive merkle root ${root} does not match expected root ${rootOption}`,
-      );
-    }
     root = rootOption;
+    anchor = `expected root ${rootOption}`;
+  } else if (declaredRoot !== undefined) {
+    root = declaredRoot;
+    anchor = `proofs root ${declaredRoot}`;
+  } else if (archiveRoot !== undefined) {
+    return failure(
+      "proof-verify: proofs document declares no root and no --seal/--root pin was given; cannot establish a trusted anchor",
+    );
   }
 
   if (root === undefined) {
     return failure("proof-verify: could not determine a root to verify against");
+  }
+
+  if (archiveRoot !== undefined && archiveRoot !== root) {
+    reasons.push(`archive merkle root ${archiveRoot} does not match ${anchor}`);
+  }
+  if (declaredRoot !== undefined && declaredRoot !== root) {
+    reasons.push(`proofs root ${declaredRoot} does not match ${anchor}`);
   }
 
   const requested = pathFilter ? [pathFilter] : Object.keys(proofs).sort();

@@ -793,7 +793,7 @@ td code {
 
 .playground__hint {
   margin-left: auto;
-  color: var(--faint);
+  color: var(--mute);
   font-size: 0.8125rem;
 }
 

@@ -227,8 +227,10 @@ export function verifySeal(
     reasons.push(`members modified: ${modified.join(", ")}`);
   }
 
-  const trusted =
+  const pinned =
     options.expectedRoot !== undefined || options.expectedPublicKey !== undefined;
+  const trusted =
+    pinned && expectedRootOk && expectedPublicKeyOk && signatureOk;
 
   const ok =
     signatureOk &&

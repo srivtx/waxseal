@@ -1,7 +1,8 @@
 {
   "name": "waxseal",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Detached Ed25519 Merkle seal for WACZ web archives. Sign an archive once, verify it offline anywhere; include membership proofs per file.",
+  "author": "srivtx",
   "type": "module",
   "module": "src/index.ts",
   "main": "src/index.ts",
@@ -18,10 +19,7 @@
     "waxseal": "src/cli.ts"
   },
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/srivtx/waxseal.git"
-  },
+  "repository": "https://github.com/srivtx/waxseal",
   "homepage": "https://waxseal-srivtx.vercel.app",
   "bugs": {
     "url": "https://github.com/srivtx/waxseal/issues"
@@ -41,11 +39,9 @@
     "typescript",
     "bun"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "files": [
     "src",
+    "install.sh",
     "README.md",
     "SECURITY.md",
     "LICENSE",

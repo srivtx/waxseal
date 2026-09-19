@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import { strToU8, zipSync } from "fflate";
 import { buildWacz, defaultWacz } from "../src/fixtures.ts";
-import { createSeal } from "../src/seal.ts";
+import { createSeal, createProofDocument } from "../src/seal.ts";
 import { verifySeal } from "../src/verify.ts";
 import { generateKeyPair, publicKeyBase64 } from "../src/keys.ts";
 
@@ -284,6 +284,7 @@ describe("cli trust boundary", () => {
       expect(wrong.stdout).toContain("FAILED");
       expect(wrong.stdout).toContain("fingerprint: sha256:");
       expect(wrong.stdout).toContain("expectedPublicKey");
+      expect(wrong.stdout).toContain("trusted:     no");
 
       const right = await runCli(
         ["verify", archivePath, "-s", sealPath, "--public-key", `${keyA}.pub.pem`],
@@ -347,6 +348,7 @@ describe("cli trust boundary", () => {
       );
       expect(pinned.exitCode).toBe(1);
       expect(pinned.stdout).toContain("FAILED");
+      expect(pinned.stdout).toContain("trusted:     no");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -601,6 +603,121 @@ describe("cli robustness", () => {
         dir,
       );
       expect(memberOnly.exitCode).toBe(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli proof-verify tamper detection", () => {
+  test("a tampered single-member archive with its original proofs fails", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "one.wacz");
+      const tamperedPath = join(dir, "one.tampered.wacz");
+      const proofsPath = join(dir, "one.proofs.json");
+      const member = "datapackage.json";
+
+      await Bun.write(
+        archivePath,
+        zipSync({ [member]: strToU8(JSON.stringify({ resources: [] })) }),
+      );
+      const seal = await runCli(
+        ["seal", archivePath, "--proofs", proofsPath],
+        dir,
+      );
+      expect(seal.exitCode).toBe(0);
+
+      await Bun.write(
+        tamperedPath,
+        zipSync({
+          [member]: strToU8(JSON.stringify({ resources: [{ path: "evil" }] })),
+        }),
+      );
+
+      const result = await runCli(
+        ["proof-verify", tamperedPath, "--proofs", proofsPath],
+        dir,
+      );
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain("FAIL");
+      expect(result.stdout).toContain("does not match");
+
+      const json = await runCli(
+        ["proof-verify", tamperedPath, "--proofs", proofsPath, "--json"],
+        dir,
+      );
+      expect(json.exitCode).toBe(1);
+      const parsed = JSON.parse(json.stdout) as {
+        ok: boolean;
+        reasons: string[];
+      };
+      expect(parsed.ok).toBe(false);
+      expect(parsed.reasons.some((r) => r.includes("does not match"))).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a proofs document whose declared root does not match the archive fails", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const proofsPath = join(dir, "proofs.json");
+      const mismatchPath = join(dir, "mismatch-proofs.json");
+      await Bun.write(archivePath, defaultWacz());
+
+      const seal = await runCli(
+        ["seal", archivePath, "--proofs", proofsPath],
+        dir,
+      );
+      expect(seal.exitCode).toBe(0);
+
+      const document = JSON.parse(await Bun.file(proofsPath).text()) as {
+        root: string;
+        proofs: unknown;
+      };
+      document.root = "f".repeat(64);
+      await Bun.write(mismatchPath, JSON.stringify(document));
+
+      const result = await runCli(
+        ["proof-verify", archivePath, "--proofs", mismatchPath],
+        dir,
+      );
+      expect(result.exitCode).toBe(1);
+      expect(result.stdout).toContain("does not match");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a legacy proofs document without a root fails closed unless pinned", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const barePath = join(dir, "bare-proofs.json");
+      const archive = defaultWacz();
+      await Bun.write(archivePath, archive);
+
+      const document = createProofDocument(archive);
+      const bare: Record<string, unknown> = {};
+      for (const [path, entry] of Object.entries(document.proofs)) {
+        bare[path] = entry.steps;
+      }
+      await Bun.write(barePath, JSON.stringify(bare));
+
+      const unpinned = await runCli(
+        ["proof-verify", archivePath, "--proofs", barePath],
+        dir,
+      );
+      expect(unpinned.exitCode).toBe(1);
+      expect(unpinned.stderr).toContain("no root");
+
+      const anchored = await runCli(
+        ["proof-verify", archivePath, "--proofs", barePath, "--root", document.root],
+        dir,
+      );
+      expect(anchored.exitCode).toBe(0);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

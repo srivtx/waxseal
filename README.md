@@ -11,7 +11,7 @@
 [![license](https://img.shields.io/badge/license-MIT-0f766e)](LICENSE)
 [![runtime](https://img.shields.io/badge/runtime-Bun-14151A?logo=bun&logoColor=white)](https://bun.sh)
 [![types](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![tests](https://img.shields.io/badge/tests-60-0f766e)](#testing)
+[![tests](https://img.shields.io/badge/tests-63-0f766e)](#testing)
 [![network](https://img.shields.io/badge/network-none-0f766e)](#privacy)
 
 </div>
@@ -91,9 +91,16 @@ allow a legitimate re-zip.
 A seal carries its own `publicKey`, so on its own it only proves internal
 consistency: `verify` prints `trusted: no` and the signature is checked against
 the embedded key. Pass `--public-key <pem|base64>` or `--root <hex>` to pin what
-you trust; `verify` then reports `trusted: yes` and fails if the archive does not
-match. The SHA-256 fingerprint of the SPKI key is always printed so you can pin
-it out of band.
+you trust; `verify` then reports `trusted: yes` only when the pin actually
+matches, and fails (exit 1) otherwise. The SHA-256 fingerprint of the SPKI key is
+always printed so you can pin it out of band.
+
+> **Root-only pinning attests content, not provenance.** Pinning `--root` proves
+> the archive hashes to that root, but it does not prove who signed it: an
+> attacker can re-sign the *same* archive with their own key and still satisfy
+> `--root`. When only `--root` is supplied the CLI prints
+> `provenance:  not checked (root-only pin attests content, not an author)`. Pin
+> `--public-key` when you need a provenance verdict.
 
 ### Prove a single file
 
@@ -112,11 +119,16 @@ waxseal proof-verify --proofs capture.proofs.json \
   --path archive/data.warc.gz --root <hex-root> --sha256 <hex-content-hash>
 ```
 
-`proof-verify` checks each requested proof against the seal root (or the root
-rebuilt from the archive). Omit `--path` to check every proof in the file, or
-add `--json` for machine-readable output. It exits `0` only when all requested
-proofs verify, and `1` when a proof fails or a `--path` is missing. An empty
-requested set is vacuously valid.
+`proof-verify` checks each requested proof against the root declared by the
+proof document, and against the seal root (or `--root`) when supplied. With an
+archive it rebuilds the Merkle root from the archive and fails if that root does
+not match the declared/proofs root or the pin, so a tampered member is rejected
+even when no pin is given. If a proofs document carries no root, pass `--seal` or
+`--root` to anchor the verdict; otherwise the command fails closed. Omit `--path`
+to check every proof in the file, or add `--json` for machine-readable output. It
+exits `0` only when all requested proofs verify, and `1` when a proof fails, a
+root does not match, or a `--path` is missing. An empty requested set is
+vacuously valid.
 
 Run `waxseal --help` (or `-h`) for the full command list and `waxseal --version`
 for the installed version.
@@ -222,7 +234,7 @@ need a proven "existed before" time.
 
 | Gate | Result |
 |---|---|
-| `bun test` | 60 tests |
+| `bun test` | 63 tests |
 | `bunx tsc --noEmit` | clean (strict) |
 | round trip | `keygen` → `seal` → `verify` succeeds; a tampered archive exits 1 |
 
@@ -243,7 +255,8 @@ No network code. Signing and verification use `node:crypto` locally.
 - The datapackage digest re-check overlaps `py-wacz`; `waxseal` is not a
   replacement for it, it is a portable proof layer on top.
 - No identity or trust model for the public key beyond pinning
-  `--public-key`/`--root`; a seal on its own is `trusted: no`.
+  `--public-key`/`--root`; a seal on its own is `trusted: no`, and a `--root`
+  pin attests content only, not provenance (pin `--public-key` for that).
 - Decompression is bounded (65,535 members, 1 GiB uncompressed) and member
   paths are normalized; absolute or `..` paths are rejected.
 

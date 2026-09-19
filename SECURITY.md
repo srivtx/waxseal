@@ -36,10 +36,21 @@ backports.
 - **Verify, do not trust.** `waxseal verify` must reject a mismatched root, a
   bad signature, a missing member, and a proof that does not reproduce the
   root. A seal is only *self-consistent* until you pin a trusted
-  `--public-key` or `--root`; without one the CLI reports `trusted: no`. The
-  Ed25519 signature is checked by `node:crypto`; root and digest comparisons
-  are ordinary string equality over public, non-secret values, so they are not
-  constant-time and are not required to be.
+  `--public-key` or `--root`; without one the CLI reports `trusted: no`. The CLI
+  reports `trusted: yes` only when the supplied pin actually matches, not merely
+  because a pin was passed. `waxseal proof-verify` rejects an archive whose
+  rebuilt Merkle root does not match the root declared in the proofs document
+  (or the `--seal`/`--root` pin), and fails closed when a proofs document
+  declares no root and no pin is supplied. The Ed25519 signature is checked by
+  `node:crypto`; root and digest comparisons are ordinary string equality over
+  public, non-secret values, so they are not constant-time and are not required
+  to be.
+- **`--root` pinning is content attestation, not provenance.** A root pin proves
+  the archive hashes to a known value, but not who signed it: an attacker can
+  re-sign the same archive under their own key and still satisfy `--root`. For a
+  provenance verdict, pin `--public-key`. When only `--root` is given the CLI
+  prints `provenance:  not checked (root-only pin ...)`. Prefer `--public-key`
+  whenever the signer's identity matters.
 
 ## Reporting a vulnerability
 

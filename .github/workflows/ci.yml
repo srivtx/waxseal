@@ -25,6 +25,17 @@ jobs:
       - name: Test
         run: bun test
 
+      - name: Lint installer
+        run: |
+          sh -n install.sh
+          sh install.sh --help
+
+      - name: Site build and check
+        run: |
+          bun run build:site
+          git diff --exit-code site/assets/demo.js
+          bun run check:site
+
       - name: Round trip (keygen + seal + verify)
         run: |
           bun run make-fixtures

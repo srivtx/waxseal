@@ -267,6 +267,7 @@ describe("createSeal / verifySeal", () => {
     });
     expect(bad.ok).toBe(false);
     expect(bad.expectedPublicKeyOk).toBe(false);
+    expect(bad.trusted).toBe(false);
   });
 
   test("expectedRoot must match the computed root", () => {
@@ -279,12 +280,13 @@ describe("createSeal / verifySeal", () => {
       CREATED_AT,
     );
 
-    expect(
-      verifySeal(seal, data, { expectedRoot: seal.root }).ok,
-    ).toBe(true);
+    const good = verifySeal(seal, data, { expectedRoot: seal.root });
+    expect(good.ok).toBe(true);
+    expect(good.trusted).toBe(true);
     const bad = verifySeal(seal, data, { expectedRoot: "0".repeat(64) });
     expect(bad.ok).toBe(false);
     expect(bad.expectedRootOk).toBe(false);
+    expect(bad.trusted).toBe(false);
   });
 
   test("verify reports a fingerprint of the SPKI key", () => {
