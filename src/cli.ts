@@ -9,8 +9,9 @@ import {
   sealToJson,
 } from "./seal.ts";
 import { verifySealJson } from "./verify.ts";
-import { inspectWacz } from "./wacz.ts";
-import { buildMerkle } from "./merkle.ts";
+import { inspectWacz, memberDigests } from "./wacz.ts";
+import { buildMerkle, verifyInclusion } from "./merkle.ts";
+import type { ProofStep } from "./types.ts";
 
 const USAGE = `waxseal — detached Ed25519 seals for WACZ web archives
 
@@ -20,17 +21,26 @@ Usage:
 Commands:
   keygen [--out <base>]                 Generate an Ed25519 key pair
                                         (default base: waxseal-key)
-  seal <archive.wacz> [--key <pem>] [--out <seal.json>] [--proofs <proofs.json>]
+  seal <archive.wacz> [--key <pem>] [--out <seal.json>] [--proofs <proofs.json>] [--json]
                                         Create a detached seal for an archive
   verify <archive.wacz> -s <seal.json> [--json] [--member-only]
                                         Verify an archive against a seal
                                         (default: strict byte-level check;
                                         --member-only allows a re-zip)
+  proof-verify <archive.wacz> --proofs <proofs.json> [--path <member>] [--json]
+                                        Verify Merkle inclusion proofs against
+                                        the archive's rebuilt root
+                                        (default: every proof in the file)
   inspect <archive.wacz> [--json]       Inspect members, digest status, root
 
 Options:
   -s, --seal <file>                     Seal file for the verify command
+  --proofs <file>                       Proofs file (seal, proof-verify)
+  --path <member>                       Only verify this proof (proof-verify)
+  --json                                Machine-readable output (seal, verify,
+                                        proof-verify, inspect)
   -h, --help                            Show this help
+  -v, --version                         Show the version
 `;
 
 interface ParsedArgs {
@@ -86,8 +96,43 @@ function fail(message: string): number {
   return 1;
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function packageVersion(): Promise<string> {
+  try {
+    const pkg = (await Bun.file(
+      new URL("../package.json", import.meta.url),
+    ).json()) as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
 async function readBytes(path: string): Promise<Uint8Array> {
   return new Uint8Array(await Bun.file(path).arrayBuffer());
+}
+
+function parseProof(value: unknown): ProofStep[] {
+  if (!Array.isArray(value)) {
+    throw new Error("proof is not an array");
+  }
+  return value.map((item) => {
+    if (typeof item !== "string") {
+      throw new Error("proof step is not a string");
+    }
+    const step = JSON.parse(item) as Partial<ProofStep> | null;
+    if (
+      !step ||
+      typeof step.hash !== "string" ||
+      (step.position !== "left" && step.position !== "right")
+    ) {
+      throw new Error("invalid proof step");
+    }
+    return { hash: step.hash, position: step.position };
+  });
 }
 
 function publicPemFromPrivate(privateKeyPem: string): string {
@@ -150,6 +195,11 @@ async function cmdSeal(args: ParsedArgs): Promise<number> {
     await Bun.write(proofsPath, JSON.stringify(proofs, null, 2));
   }
 
+  if (hasFlag(args.options, "--json")) {
+    console.log(sealToJson(seal));
+    return 0;
+  }
+
   console.log(`archive:     ${archive}`);
   console.log(`seal:        ${out}`);
   console.log(`root:        ${seal.root}`);
@@ -197,6 +247,90 @@ async function cmdVerify(args: ParsedArgs): Promise<number> {
   return result.ok ? 0 : 1;
 }
 
+interface ProofVerifyEntry {
+  path: string;
+  ok: boolean;
+  reason?: string;
+}
+
+async function cmdProofVerify(args: ParsedArgs): Promise<number> {
+  const archive = args.positionals[0];
+  if (!archive) return fail("proof-verify: missing <archive.wacz>");
+
+  const proofsPath = getOption(args.options, "--proofs");
+  if (!proofsPath) return fail("proof-verify: missing --proofs <proofs.json>");
+
+  const pathFilter = getOption(args.options, "--path");
+
+  const data = await readBytes(archive);
+  const digests = memberDigests(data);
+  const root = buildMerkle(digests).root;
+  const digestByPath = new Map(digests.map((d) => [d.path, d.sha256]));
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await Bun.file(proofsPath).text());
+  } catch (error) {
+    return fail(
+      `proof-verify: failed to read ${proofsPath}: ${errorMessage(error)}`,
+    );
+  }
+
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return fail(
+      "proof-verify: proofs JSON must be an object mapping path to ProofStep[]",
+    );
+  }
+  const proofs = raw as Record<string, unknown>;
+
+  if (pathFilter && !Object.hasOwn(proofs, pathFilter)) {
+    return fail(
+      `proof-verify: no proof for path "${pathFilter}" in ${proofsPath}`,
+    );
+  }
+
+  const requested = pathFilter ? [pathFilter] : Object.keys(proofs).sort();
+  const results: ProofVerifyEntry[] = [];
+
+  for (const path of requested) {
+    const sha256 = digestByPath.get(path);
+    if (sha256 === undefined) {
+      results.push({ path, ok: false, reason: "member not present in archive" });
+      continue;
+    }
+
+    let proof: ProofStep[];
+    try {
+      proof = parseProof(proofs[path]);
+    } catch (error) {
+      results.push({ path, ok: false, reason: errorMessage(error) });
+      continue;
+    }
+
+    results.push(
+      verifyInclusion(path, sha256, proof, root)
+        ? { path, ok: true }
+        : { path, ok: false, reason: "inclusion proof did not match root" },
+    );
+  }
+
+  const ok = results.length > 0 && results.every((entry) => entry.ok);
+
+  if (hasFlag(args.options, "--json")) {
+    console.log(JSON.stringify({ archive, root, ok, results }, null, 2));
+    return ok ? 0 : 1;
+  }
+
+  console.log(`archive: ${archive}`);
+  console.log(`root:    ${root}`);
+  for (const entry of results) {
+    const suffix = entry.reason ? ` — ${entry.reason}` : "";
+    console.log(`${entry.ok ? "OK  " : "FAIL"} ${entry.path}${suffix}`);
+  }
+
+  return ok ? 0 : 1;
+}
+
 async function cmdInspect(args: ParsedArgs): Promise<number> {
   const archive = args.positionals[0];
   if (!archive) return fail("inspect: missing <archive.wacz>");
@@ -237,6 +371,10 @@ async function main(): Promise<number> {
   }
 
   const parsed = parseArgs(argv);
+  if (hasFlag(parsed.options, "-v", "--version")) {
+    process.stdout.write(`waxseal ${await packageVersion()}\n`);
+    return 0;
+  }
   if (hasFlag(parsed.options, "-h", "--help")) {
     process.stdout.write(USAGE);
     return 0;
@@ -251,6 +389,8 @@ async function main(): Promise<number> {
       return cmdSeal(parsed);
     case "verify":
       return cmdVerify(parsed);
+    case "proof-verify":
+      return cmdProofVerify(parsed);
     case "inspect":
       return cmdInspect(parsed);
     default:

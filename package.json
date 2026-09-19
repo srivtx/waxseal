@@ -5,10 +5,40 @@
   "type": "module",
   "module": "src/index.ts",
   "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
   "bin": {
     "waxseal": "src/cli.ts"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/srivtx/waxseal.git"
+  },
+  "homepage": "https://github.com/srivtx/waxseal",
+  "bugs": {
+    "url": "https://github.com/srivtx/waxseal/issues"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "keywords": [
+    "wacz",
+    "web-archive",
+    "merkle",
+    "ed25519",
+    "inclusion-proof",
+    "signature",
+    "seal",
+    "provenance",
+    "typescript",
+    "bun"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "src",
     "README.md",

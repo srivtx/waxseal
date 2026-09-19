@@ -140,3 +140,122 @@ describe("cli round trip", () => {
     expect(result.stderr).toContain("Usage:");
   });
 });
+
+describe("cli metadata", () => {
+  test("--version prints the package version and exits 0", async () => {
+    const result = await runCli(["--version"], process.cwd());
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toMatch(/^waxseal \d+\.\d+\.\d+/);
+  });
+
+  test("--help lists the commands and exits 0", async () => {
+    const result = await runCli(["--help"], process.cwd());
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Usage:");
+    expect(result.stdout).toContain("proof-verify");
+  });
+});
+
+describe("cli proof verification", () => {
+  test("seal --json writes the file and prints the seal JSON", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const keyBase = join(dir, "key");
+      const sealPath = join(dir, "seal.json");
+      await Bun.write(archivePath, defaultWacz());
+
+      await runCli(["keygen", "--out", keyBase], dir);
+
+      const seal = await runCli(
+        [
+          "seal",
+          archivePath,
+          "--key",
+          `${keyBase}.pem`,
+          "--out",
+          sealPath,
+          "--json",
+        ],
+        dir,
+      );
+      expect(seal.exitCode).toBe(0);
+
+      const parsed = JSON.parse(seal.stdout) as {
+        root?: string;
+        signature?: string;
+      };
+      expect(parsed.root).toBeDefined();
+      expect(parsed.signature).toBeDefined();
+      expect(await Bun.file(sealPath).exists()).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("proof-verify checks every proof and honors --path", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const proofsPath = join(dir, "proofs.json");
+      await Bun.write(archivePath, defaultWacz());
+
+      const seal = await runCli(
+        ["seal", archivePath, "--proofs", proofsPath],
+        dir,
+      );
+      expect(seal.exitCode).toBe(0);
+      expect(await Bun.file(proofsPath).exists()).toBe(true);
+
+      const all = await runCli(
+        ["proof-verify", archivePath, "--proofs", proofsPath],
+        dir,
+      );
+      expect(all.exitCode).toBe(0);
+      expect(all.stdout).toContain("OK");
+
+      const single = await runCli(
+        [
+          "proof-verify",
+          archivePath,
+          "--proofs",
+          proofsPath,
+          "--path",
+          "archive/data.warc.gz",
+        ],
+        dir,
+      );
+      expect(single.exitCode).toBe(0);
+      expect(single.stdout).toContain("archive/data.warc.gz");
+
+      const json = await runCli(
+        ["proof-verify", archivePath, "--proofs", proofsPath, "--json"],
+        dir,
+      );
+      expect(json.exitCode).toBe(0);
+      const parsed = JSON.parse(json.stdout) as {
+        ok?: boolean;
+        results?: unknown[];
+      };
+      expect(parsed.ok).toBe(true);
+      expect(parsed.results?.length).toBeGreaterThan(0);
+
+      const missing = await runCli(
+        [
+          "proof-verify",
+          archivePath,
+          "--proofs",
+          proofsPath,
+          "--path",
+          "not-a-member.txt",
+        ],
+        dir,
+      );
+      expect(missing.exitCode).toBe(1);
+      expect(missing.stderr).toContain("no proof for path");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+

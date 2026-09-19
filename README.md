@@ -65,6 +65,24 @@ waxseal inspect capture.wacz --json
 `verify` defaults to a **strict byte-level** check. Pass `--member-only` to
 allow a legitimate re-zip.
 
+### Prove a single file
+
+`seal` can also emit one inclusion proof per member. Hand someone a single proof
+and they can confirm that file is part of the sealed archive without the archive
+itself.
+
+```bash
+waxseal proof-verify capture.wacz --proofs capture.proofs.json --path archive/data.warc.gz
+```
+
+`proof-verify` rebuilds the Merkle root from the archive and checks each
+requested proof against it. Omit `--path` to check every proof in the file, or
+add `--json` for machine-readable output. It exits `0` only when all requested
+proofs verify, and `1` when a proof fails or a `--path` is missing.
+
+Run `waxseal --help` (or `-h`) for the full command list and `waxseal --version`
+for the installed version.
+
 ### Library
 
 ```ts
