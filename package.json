@@ -2,7 +2,7 @@
   "name": "waxseal",
   "version": "0.2.0",
   "description": "Detached Ed25519 Merkle seal for WACZ web archives. Sign an archive once, verify it offline anywhere; include membership proofs per file.",
-  "author": "srivtx",
+  "author": "svx",
   "type": "module",
   "module": "src/index.ts",
   "main": "src/index.ts",

@@ -513,13 +513,29 @@ svg {
   overflow: hidden;
 }
 
-.code pre {
+.code pre,
+pre.code {
   margin: 0;
   padding: var(--s-4) var(--s-5);
   overflow-x: auto;
   color: var(--ink);
+  font-family: var(--font-mono);
   font-size: 0.8125rem;
   line-height: 1.7;
+  tab-size: 2;
+}
+
+pre.code > code,
+.code pre > code {
+  font: inherit;
+  white-space: pre;
+}
+
+.code--wrap pre,
+pre.code--wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
 }
 
 .code__copy {

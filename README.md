@@ -6,13 +6,11 @@
 
 **Detached Ed25519 Merkle seals for WACZ web archives.**
 
+**by svx** · MIT Licensed
+
 [![CI](https://github.com/srivtx/waxseal/actions/workflows/ci.yml/badge.svg)](https://github.com/srivtx/waxseal/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/srivtx/waxseal?sort=semver&color=4f46e5)](https://github.com/srivtx/waxseal/releases)
 [![license](https://img.shields.io/badge/license-MIT-0f766e)](LICENSE)
-[![runtime](https://img.shields.io/badge/runtime-Bun-14151A?logo=bun&logoColor=white)](https://bun.sh)
-[![types](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![tests](https://img.shields.io/badge/tests-78-0f766e)](#testing)
-[![network](https://img.shields.io/badge/network-none-0f766e)](#privacy)
 
 </div>
 
