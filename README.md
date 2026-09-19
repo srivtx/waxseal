@@ -16,7 +16,7 @@
 
 ---
 
-**Live site:** [waxseal](https://lens-site-srivtx.vercel.app/waxseal.html)  ·  **Playground:** [https://lens-site-srivtx.vercel.app/playground](https://lens-site-srivtx.vercel.app/playground)  ·  **Source:** [github.com/srivtx/waxseal](https://github.com/srivtx/waxseal)
+**Live site:** [waxseal](https://waxseal-srivtx.vercel.app)  ·  **Playground:** [https://waxseal-srivtx.vercel.app/#playground](https://waxseal-srivtx.vercel.app/#playground)  ·  **Source:** [github.com/srivtx/waxseal](https://github.com/srivtx/waxseal)
 
 ## What a WACZ is, and what is missing
 
