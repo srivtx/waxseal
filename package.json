@@ -48,10 +48,13 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "make-fixtures": "bun -e \"import { defaultWacz } from './src/fixtures.ts'; await Bun.write('fixtures/default.wacz', defaultWacz());\""
+    "make-fixtures": "bun -e \"import { defaultWacz } from './src/fixtures.ts'; await Bun.write('fixtures/default.wacz', defaultWacz());\"",
+    "build:site": "node scripts/build-site.mjs",
+    "check:site": "node scripts/check-site.mjs"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2"
+    "@types/bun": "^1.4.2",
+    "esbuild": "^0.25.0"
   },
   "peerDependencies": {
     "typescript": "^7.0.2"

@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>waxseal — detached Ed25519 Merkle seal for WACZ web archives</title>
+    <meta
+      name="description"
+      content="waxseal adds a detached Ed25519 Merkle seal to WACZ web archives. Sign once and verify offline anywhere, with an inclusion proof for any single file. No network, no server."
+    />
+    <meta name="theme-color" content="#0a0908" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <link rel="icon" href="data:," />
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <header class="site-header" id="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="#top" aria-label="waxseal, back to top">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9.4" stroke="currentColor" stroke-width="1.4" opacity="0.65" />
+              <circle cx="12" cy="12" r="5.7" stroke="currentColor" stroke-width="1.2" opacity="0.5" />
+              <path
+                d="M12 6.5l1.52 3.08 3.4.5-2.46 2.4.58 3.38L12 14.25l-3.04 1.61.58-3.38-2.46-2.4 3.4-.5z"
+                fill="currentColor"
+              />
+            </svg>
+          </span>
+          <span class="brand-text">
+            waxseal
+            <span class="brand-sub">offline WACZ sealing</span>
+          </span>
+        </a>
+
+        <div class="header-actions">
+          <button
+            type="button"
+            id="theme-toggle"
+            class="theme-toggle"
+            aria-pressed="false"
+            aria-label="Switch color theme"
+          >
+            Light mode
+          </button>
+        </div>
+
+        <button
+          type="button"
+          id="nav-toggle"
+          class="nav-toggle"
+          aria-expanded="false"
+          aria-controls="primary-nav"
+        >
+          <span class="nav-toggle-bars" aria-hidden="true"></span>
+          <span class="sr-only">Toggle navigation</span>
+        </button>
+
+        <nav class="nav" id="primary-nav" aria-label="Sections">
+          <a href="#gap">The gap</a>
+          <a href="#how">How it works</a>
+          <a href="#cli">CLI</a>
+          <a href="#demo">Try it</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ================= HERO ================= -->
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-glow" aria-hidden="true">
+          <span class="glow-layer glow-a"></span>
+          <span class="glow-layer glow-b"></span>
+        </div>
+        <div class="wrap hero-inner">
+          <p class="hero-badge">
+            <span class="hero-badge-dot" aria-hidden="true"></span>
+            Detached seal · no network · verify offline
+          </p>
+          <h1 id="hero-title">Seal a WACZ once. Prove any file, anywhere.</h1>
+          <p class="lede">
+            waxseal adds a detached Ed25519 Merkle seal to WACZ web archives — a
+            canonical root over every archive member, signed once and verifiable
+            offline with no network and no server, plus an inclusion proof for any
+            single file.
+          </p>
+
+          <p class="install-chip">
+            <span class="install-cmd" id="install-cmd">bun install</span>
+            <button
+              type="button"
+              class="copy-btn"
+              data-copy="bun install"
+              aria-label="Copy install command"
+            >
+              Copy
+            </button>
+          </p>
+
+          <div class="actions">
+            <a class="btn btn-primary shimmer" href="#demo">Try the live demo</a>
+            <a class="btn btn-ghost" href="https://github.com/srivtx/waxseal"
+              >View on GitHub</a
+            >
+          </div>
+
+          <ul class="trust-row">
+            <li class="trust-item">Deterministic path-sorted Merkle root</li>
+            <li class="trust-item">Ed25519 detached signature</li>
+            <li class="trust-item">No network calls</li>
+            <li class="trust-item">MIT licensed</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ================= STAT BAND ================= -->
+      <section class="section" aria-label="waxseal at a glance">
+        <div class="wrap">
+          <ul class="stat-band reveal">
+            <li class="stat">
+              <span class="stat-value">SHA-256</span>
+              <span class="stat-label">Domain-separated Merkle root</span>
+            </li>
+            <li class="stat">
+              <span class="stat-value">Ed25519</span>
+              <span class="stat-label">Detached signature over the root</span>
+            </li>
+            <li class="stat">
+              <span class="stat-value">log₂ n</span>
+              <span class="stat-label">Inclusion proof size per member</span>
+            </li>
+            <li class="stat">
+              <span class="stat-value">0</span>
+              <span class="stat-label">Network requests to verify</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ================= THE GAP ================= -->
+      <section class="section" id="gap" aria-labelledby="gap-title">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <p class="eyebrow">The gap</p>
+            <h2 class="section-title" id="gap-title">
+              A proof that travels with the archive, not inside it
+            </h2>
+            <p class="lede">
+              A WACZ already carries per-resource hashes in
+              <code class="code">datapackage.json</code> and
+              <code class="code">datapackage-digest.json</code>. What the
+              ecosystem lacks is a detached, portable proof — and the incumbents
+              each stop short of one.
+            </p>
+          </div>
+
+          <div class="card-grid reveal">
+            <article class="card">
+              <p class="card-tag">py-wacz</p>
+              <h3>Validates the in-archive chain</h3>
+              <p>
+                Checks that <code class="code">datapackage-digest.json</code>
+                matches <code class="code">datapackage.json</code> and every
+                resource hash and byte count. Strong, Python, and bound to the
+                ZIP it validates.
+              </p>
+              <div class="card-foot">
+                <span class="chip is-err"><span class="badge-dot"></span>no detached proof</span>
+                <a class="card-src" href="https://github.com/webrecorder/py-wacz"
+                  >source</a
+                >
+              </div>
+            </article>
+
+            <article class="card">
+              <p class="card-tag">wabac.js</p>
+              <h3>Reads and replays WACZ</h3>
+              <p>
+                A JavaScript WACZ loader for replay tooling. It understands the
+                archive format but has no signing layer and no Merkle
+                commitments.
+              </p>
+              <div class="card-foot">
+                <span class="chip is-err"><span class="badge-dot"></span>no signing</span>
+                <a
+                  class="card-src"
+                  href="https://github.com/webrecorder/wabac.js"
+                  >source</a
+                >
+              </div>
+            </article>
+
+            <article class="card">
+              <p class="card-tag">ReplayWeb.page</p>
+              <h3>Replay in the browser</h3>
+              <p>
+                Serves and replays WACZ archives client-side. It is a
+                read/replay experience, not an integrity or provenance tool.
+              </p>
+              <div class="card-foot">
+                <span class="chip is-err"><span class="badge-dot"></span>no crypto layer</span>
+                <a class="card-src" href="https://replayweb.page/">source</a>
+              </div>
+            </article>
+
+            <article class="card">
+              <p class="card-tag">waczerciser</p>
+              <h3>Structural checks only</h3>
+              <p>
+                Exercises ZIP structure and datapackage shape to catch malformed
+                archives. It performs no cryptography and emits no signature.
+              </p>
+              <div class="card-foot">
+                <span class="chip is-warn"><span class="badge-dot"></span>no cryptography</span>
+                <a
+                  class="card-src"
+                  href="https://github.com/webrecorder/waczerciser"
+                  >source</a
+                >
+              </div>
+            </article>
+          </div>
+
+          <ul class="tick-list reveal">
+            <li>
+              <strong>A detached proof.</strong> The WACZ signature lives
+              <em>inside</em> the ZIP it attests to, so it cannot be pinned,
+              notarized, or distributed out of band. waxseal emits a separate
+              <code class="code">seal.json</code>.
+            </li>
+            <li>
+              <strong>A Merkle root.</strong> Everything else is a flat,
+              one-level hash chain, so there are no inclusion or consistency
+              proofs.
+            </li>
+            <li>
+              <strong>Ed25519.</strong> The spec and implementations use
+              anonymous ECDSA or X.509 ECDSA.
+            </li>
+            <li>
+              <strong>A TypeScript implementation.</strong> py-wacz is Python;
+              wabac.js and ReplayWeb.page are read/replay-only; waczerciser has
+              no crypto.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ================= HOW IT WORKS ================= -->
+      <section class="section" id="how" aria-labelledby="how-title">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <p class="eyebrow">How it works</p>
+            <h2 class="section-title" id="how-title">
+              One deterministic root over every member
+            </h2>
+            <p class="lede">
+              The Merkle root is independent of how the ZIP was produced, so
+              re-zipping the same logical content yields the same root. Each
+              stage below is fixed and reproducible.
+            </p>
+          </div>
+
+          <ol class="steps reveal">
+            <li class="step">
+              <span class="step-num">1</span>
+              <div class="step-body">
+                <strong>Digest every member.</strong> Every file in the archive
+                becomes a <code class="code">(normalized path, content
+                SHA-256)</code> pair.
+              </div>
+            </li>
+            <li class="step">
+              <span class="step-num">2</span>
+              <div class="step-body">
+                <strong>Sort and domain-separate.</strong> Sort by normalized
+                path, then hash each leaf with an explicit domain prefix so
+                leaves and nodes can never be confused.
+              </div>
+            </li>
+            <li class="step">
+              <span class="step-num">3</span>
+              <div class="step-body">
+                <strong>Promote and combine.</strong> Pair nodes level by level;
+                the last node of an odd level is carried up unchanged, never
+                duplicated.
+              </div>
+            </li>
+            <li class="step">
+              <span class="step-num">4</span>
+              <div class="step-body">
+                <strong>Sign the root.</strong> Ed25519 signs a canonical JSON
+                payload — the signature covers the root, member count, algorithm,
+                and the archive's byte hash.
+              </div>
+            </li>
+            <li class="step">
+              <span class="step-num">5</span>
+              <div class="step-body">
+                <strong>Verify offline.</strong> Rebuild the root from the
+                archive, check the signature, and check any inclusion proof — no
+                network, no server.
+              </div>
+            </li>
+          </ol>
+
+          <figure class="merkle-figure reveal">
+            <div
+              class="merkle"
+              role="img"
+              aria-label="Merkle tree: path-sorted members are hashed into domain-separated leaves, odd nodes are promoted, and the nodes combine into one signed root."
+            >
+              <div class="merkle-stage">
+                <span class="merkle-stage-title">1 · members</span>
+                <span class="merkle-stack">
+                  <span class="merkle-chip is-leaf">archive/data.warc.gz</span>
+                  <span class="merkle-chip is-leaf">indexes/index.cdx</span>
+                  <span class="merkle-chip is-leaf">pages/pages.jsonl</span>
+                </span>
+              </div>
+
+              <span class="merkle-arrow" aria-hidden="true">→</span>
+
+              <div class="merkle-stage">
+                <span class="merkle-stage-title">2 · leaves</span>
+                <span class="merkle-stack">
+                  <span class="merkle-chip is-hash">7c1e…4b90</span>
+                  <span class="merkle-chip is-hash">d0a2…13fe</span>
+                  <span class="merkle-chip is-hash">9f47…c8a1</span>
+                </span>
+              </div>
+
+              <span class="merkle-arrow" aria-hidden="true">→</span>
+
+              <div class="merkle-stage">
+                <span class="merkle-stage-title">3 · nodes</span>
+                <span class="merkle-stack">
+                  <span class="merkle-chip is-node">node(K₁, K₂) → 3b7d…</span>
+                  <span class="merkle-chip is-node">promote K₃</span>
+                </span>
+              </div>
+
+              <span class="merkle-arrow" aria-hidden="true">→</span>
+
+              <div class="merkle-stage">
+                <span class="merkle-stage-title">4 · root</span>
+                <span class="merkle-stack">
+                  <span class="merkle-chip is-root">5e91…2fa0</span>
+                </span>
+              </div>
+            </div>
+
+            <p class="merkle-note">
+              <code class="code">leaf = SHA-256("waxseal:leaf:" + path + ":" + sha256(content))</code><br />
+              <code class="code">node = SHA-256("waxseal:node:" + left + ":" + right)</code><br />
+              <code class="code">empty = SHA-256("waxseal:empty")</code>
+            </p>
+            <figcaption class="figure-caption">
+              Path-sorted leaves → domain-separated leaf hashes →
+              odd-node-promoted nodes → one root. The waxseal root is
+              <code class="code">sha256-domain-separated-sorted</code>.
+            </figcaption>
+          </figure>
+
+          <div class="callout is-info reveal">
+            <span class="callout-title">Member-level vs byte-level</span>
+            <p>
+              Membership is a set of
+              <code class="code">(normalized path, content SHA-256)</code> pairs,
+              so a member-level check tolerates a legitimate re-zip.
+              <code class="code">archiveSha256</code> pins the exact bytes
+              instead: <code class="code">verifySeal(seal, data, { strictBytes: true })</code>
+              fails if the archive differs in any way — including appended
+              trailing bytes that leave every member unchanged.
+            </p>
+            <p>
+              The CLI defaults to strict byte-level verification;
+              <code class="code">--member-only</code> relaxes it for reproducible
+              re-packaging. The library default is member-level.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= CLI ================= -->
+      <section class="section" id="cli" aria-labelledby="cli-title">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <p class="eyebrow">CLI reference</p>
+            <h2 class="section-title" id="cli-title">Five commands, offline</h2>
+            <p class="lede">
+              Signing and verification run locally against
+              <code class="code">node:crypto</code>. Run
+              <code class="code">waxseal --help</code> for the full list, or
+              <code class="code">waxseal --version</code> for the installed
+              version.
+            </p>
+          </div>
+
+          <div class="table-wrap reveal">
+            <table class="rule-table">
+              <caption>
+                Commands and options. Copy runs a concrete example; the table
+                shows the usage form.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Command</th>
+                  <th scope="col">What it does</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <span class="cmd">
+                      <code class="cmd-code">waxseal keygen [--out &lt;base&gt;]</code>
+                      <button
+                        type="button"
+                        class="copy-btn"
+                        data-copy="waxseal keygen --out archive-key"
+                        aria-label="Copy keygen command"
+                      >
+                        Copy
+                      </button>
+                    </span>
+                  </td>
+                  <td>
+                    Generate an Ed25519 key pair (default base:
+                    <code>waxseal-key</code>) →
+                    <code>archive-key.pem</code> (private),
+                    <code>archive-key.pub.pem</code> (public).
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="cmd">
+                      <code class="cmd-code">waxseal seal &lt;archive.wacz&gt; [--key &lt;pem&gt;] [--out &lt;seal.json&gt;] [--proofs &lt;proofs.json&gt;] [--json]</code>
+                      <button
+                        type="button"
+                        class="copy-btn"
+                        data-copy="waxseal seal capture.wacz --key archive-key.pem --out capture.seal.json"
+                        aria-label="Copy seal command"
+                      >
+                        Copy
+                      </button>
+                    </span>
+                  </td>
+                  <td>Create a detached seal for an archive.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="cmd">
+                      <code class="cmd-code">waxseal verify &lt;archive.wacz&gt; -s &lt;seal.json&gt; [--json] [--member-only]</code>
+                      <button
+                        type="button"
+                        class="copy-btn"
+                        data-copy="waxseal verify capture.wacz -s capture.seal.json"
+                        aria-label="Copy verify command"
+                      >
+                        Copy
+                      </button>
+                    </span>
+                  </td>
+                  <td>
+                    Verify an archive against a seal. Default: strict byte-level
+                    check; <code>--member-only</code> allows a re-zip.
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="cmd">
+                      <code class="cmd-code">waxseal proof-verify &lt;archive.wacz&gt; --proofs &lt;proofs.json&gt; [--path &lt;member&gt;] [--json]</code>
+                      <button
+                        type="button"
+                        class="copy-btn"
+                        data-copy="waxseal proof-verify capture.wacz --proofs capture.proofs.json --path archive/data.warc.gz"
+                        aria-label="Copy proof-verify command"
+                      >
+                        Copy
+                      </button>
+                    </span>
+                  </td>
+                  <td>
+                    Verify Merkle inclusion proofs against the archive's rebuilt
+                    root (default: every proof in the file).
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="cmd">
+                      <code class="cmd-code">waxseal inspect &lt;archive.wacz&gt; [--json]</code>
+                      <button
+                        type="button"
+                        class="copy-btn"
+                        data-copy="waxseal inspect capture.wacz --json"
+                        aria-label="Copy inspect command"
+                      >
+                        Copy
+                      </button>
+                    </span>
+                  </td>
+                  <td>Inspect members, datapackage digest status, and root.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <pre class="code reveal"><code># 1. create a key pair
+waxseal keygen --out archive-key
+
+# 2. seal once, emit a seal and one proof per member
+waxseal seal capture.wacz --key archive-key.pem --out capture.seal.json
+
+# 3. verify later, fully offline
+waxseal verify capture.wacz -s capture.seal.json</code></pre>
+
+          <div class="prose reveal">
+            <p>
+              A passing check shows that the archive contains exactly the members
+              the signer committed to — no additions, removals, or modifications
+              — that the signer held the private key for the embedded public key,
+              and, with <code class="code">strictBytes</code>, that the file is
+              byte-for-byte the one that was sealed. It does not prove identity
+              and provides no trusted timestamp:
+              <code class="code">createdAt</code> is self-asserted by the signer.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= DEMO ================= -->
+      <section class="section" id="demo" aria-labelledby="demo-title">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <p class="eyebrow">Try it</p>
+            <h2 class="section-title" id="demo-title">
+              Compute a real root in your browser
+            </h2>
+            <p class="lede">
+              This demo runs the real, bundled Merkle and inclusion-proof code.
+              Enter one member per line as <code class="code">path=content</code>,
+              compute the deterministic root, and verify a proof. Nothing is
+              uploaded — every byte stays in this tab.
+            </p>
+          </div>
+
+          <div class="callout is-warn reveal">
+            <span class="callout-title">Ed25519 needs the CLI</span>
+            <p>
+              Ed25519 key operations are not available in the browser demo; use
+              the waxseal CLI for <code class="code">keygen</code>, signing, and
+              signature verification. This page covers the Merkle root and
+              inclusion proofs, with no signing.
+            </p>
+          </div>
+
+          <form id="demo-form" class="demo-grid reveal">
+            <div class="demo-panel">
+              <h3>Archive members</h3>
+              <label class="demo-label" for="demo-input">
+                One <code>path=content</code> per line (# comments ignored)
+              </label>
+              <textarea id="demo-input" class="demo-textarea" spellcheck="false">archive/data.warc.gz=warc-gzip-placeholder-bytes
+pages/pages.jsonl={"url":"https://example.com"}
+indexes/index.cdx=com,example)/ 20240101000000 {"url":"https://example.com"}</textarea>
+
+              <label class="demo-label" for="demo-path" style="margin-top: 14px">
+                Member to prove
+              </label>
+              <input
+                id="demo-path"
+                class="demo-path"
+                type="text"
+                value="archive/data.warc.gz"
+              />
+
+              <div class="demo-row">
+                <button type="submit" class="btn btn-primary shimmer">
+                  Compute root &amp; proof
+                </button>
+              </div>
+              <p id="demo-status" class="demo-status" role="status" aria-live="polite">
+                No members computed yet.
+              </p>
+            </div>
+
+            <div class="demo-panel">
+              <h3>Deterministic root</h3>
+              <p class="demo-label">Merkle root</p>
+              <pre id="demo-root" class="demo-output is-root"></pre>
+              <div class="demo-row">
+                <button
+                  type="button"
+                  class="copy-btn"
+                  data-copy-target="#demo-root"
+                  aria-label="Copy Merkle root"
+                >
+                  Copy root
+                </button>
+              </div>
+              <p class="demo-label" style="margin-top: 14px">
+                Leaf order (sorted by path)
+              </p>
+              <pre id="demo-order" class="demo-output"></pre>
+            </div>
+          </form>
+
+          <div class="table-wrap demo-members reveal" style="margin-top: 24px">
+            <table class="rule-table">
+              <caption>Per-member SHA-256</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Path</th>
+                  <th scope="col">Content SHA-256</th>
+                  <th scope="col">Size</th>
+                </tr>
+              </thead>
+              <tbody id="demo-members">
+                <tr>
+                  <td colspan="3" class="muted">
+                    Run the demo to compute member digests.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="demo-grid reveal">
+            <div class="demo-panel">
+              <h3>Inclusion proof</h3>
+              <p class="demo-label">Proof steps for the chosen member</p>
+              <pre id="demo-proof" class="demo-output"></pre>
+            </div>
+            <div class="demo-panel">
+              <h3>Proof verifier</h3>
+              <p class="muted">
+                Calls the real <code class="code">verifyInclusion</code> against
+                the computed root.
+              </p>
+              <div class="demo-row">
+                <button type="button" class="btn btn-ghost" id="demo-verify">
+                  Verify proof
+                </button>
+              </div>
+              <p id="demo-proof-status" class="demo-status" role="status" aria-live="polite">
+                Not verified yet.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= LIMITATIONS ================= -->
+      <section class="section" id="limits" aria-labelledby="limits-title">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <p class="eyebrow">Honest limits</p>
+            <h2 class="section-title" id="limits-title">
+              What waxseal does not claim
+            </h2>
+          </div>
+
+          <div class="callout is-warn reveal">
+            <span class="callout-title">Scope and limitations</span>
+            <ul class="prose" style="margin: 0">
+              <li>
+                ZIP member order and metadata are not part of the sealed bytes;
+                use <code class="code">strictBytes</code> when you need
+                byte-for-byte attestation.
+              </li>
+              <li>Ed25519 only — no X.509 or ECDSA.</li>
+              <li>
+                The datapackage digest re-check overlaps py-wacz; waxseal is a
+                portable proof layer on top, not a replacement.
+              </li>
+              <li>No identity or trust model for the public key.</li>
+              <li>
+                No trusted timestamp:
+                <code class="code">createdAt</code> is self-asserted by the
+                signer.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= FAQ ================= -->
+      <section class="section" id="faq" aria-labelledby="faq-title">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <p class="eyebrow">Questions</p>
+            <h2 class="section-title" id="faq-title">Frequently asked</h2>
+          </div>
+
+          <div class="faq reveal">
+            <details class="faq-item">
+              <summary>Is anything uploaded when I use the demo?</summary>
+              <div class="faq-a">
+                <p>
+                  No. The bundled SHA-256 and Merkle code run entirely in this
+                  tab, and the page makes no network requests. Reload the page
+                  and the state is gone.
+                </p>
+              </div>
+            </details>
+
+            <details class="faq-item">
+              <summary>Does a valid seal prove who signed it?</summary>
+              <div class="faq-a">
+                <p>
+                  No. It proves the signer held the private key matching the
+                  embedded public key, and that the archive matches the committed
+                  root. There is no identity or trust model for that key.
+                </p>
+              </div>
+            </details>
+
+            <details class="faq-item">
+              <summary>Does it prove when the archive was sealed?</summary>
+              <div class="faq-a">
+                <p>
+                  No trusted timestamp. <code class="code">createdAt</code> is
+                  self-asserted by the signer. Pair the root with a timestamping
+                  authority if you need a proven "existed before" time.
+                </p>
+              </div>
+            </details>
+
+            <details class="faq-item">
+              <summary>What happens if I re-zip the same content?</summary>
+              <div class="faq-a">
+                <p>
+                  A member-level check tolerates it, because leaves are
+                  <code class="code">(normalized path, content SHA-256)</code>
+                  pairs and the root is unchanged. Strict byte mode
+                  (<code class="code">archiveSha256</code>) catches any byte
+                  difference, including appended trailing bytes that leave every
+                  member unchanged.
+                </p>
+              </div>
+            </details>
+
+            <details class="faq-item">
+              <summary>How does waxseal relate to py-wacz?</summary>
+              <div class="faq-a">
+                <p>
+                  They are complementary. py-wacz validates the WACZ's own
+                  datapackage chain inside the archive; waxseal adds a detached,
+                  portable Merkle-and-Ed25519 proof layer on top of the same
+                  members.
+                </p>
+              </div>
+            </details>
+
+            <details class="faq-item">
+              <summary>Why can't the browser demo sign?</summary>
+              <div class="faq-a">
+                <p>
+                  Ed25519 key generation, signing, and signature verification
+                  require the CLI. The demo intentionally covers only the Merkle
+                  root and inclusion proofs, which run fully client-side.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span class="footer-edge" aria-hidden="true"></span>
+      <div class="wrap">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <a class="brand" href="#top">
+              <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9.4" stroke="currentColor" stroke-width="1.4" opacity="0.65" />
+                  <circle cx="12" cy="12" r="5.7" stroke="currentColor" stroke-width="1.2" opacity="0.5" />
+                  <path
+                    d="M12 6.5l1.52 3.08 3.4.5-2.46 2.4.58 3.38L12 14.25l-3.04 1.61.58-3.38-2.46-2.4 3.4-.5z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </span>
+              <span class="brand-text">
+                waxseal
+                <span class="brand-sub">offline WACZ sealing</span>
+              </span>
+            </a>
+            <p class="footer-note">
+              A detached Ed25519 Merkle seal for WACZ web archives. Sign once,
+              verify offline anywhere, prove any single file.
+            </p>
+          </div>
+
+          <div>
+            <h2 class="footer-heading">The suite</h2>
+            <ul class="footer-links">
+              <li>
+                <a href="https://booklens-srivtx.vercel.app">booklens</a>
+              </li>
+              <li>
+                <a href="https://officelens-srivtx.vercel.app">officelens</a>
+              </li>
+              <li>
+                <a href="https://odflens-srivtx.vercel.app">odflens</a>
+              </li>
+              <li>
+                <a href="https://iconlens-srivtx.vercel.app">iconlens</a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h2 class="footer-heading">Project</h2>
+            <ul class="footer-links">
+              <li>
+                <a href="https://github.com/srivtx/waxseal">GitHub repository</a>
+              </li>
+              <li>
+                <a href="https://github.com/srivtx/waxseal/blob/main/LICENSE"
+                  >MIT license</a
+                >
+              </li>
+              <li><a href="#cli">CLI reference</a></li>
+              <li><a href="#demo">Live demo</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <p class="footer-note">
+            MIT licensed. This page makes no external requests and bundles all
+            of its own code.
+          </p>
+          <a class="to-top" href="#top">↑ Back to top</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="assets/demo.js"></script>
+    <script src="assets/site.js" defer></script>
+    <script>
+      (function () {
+        "use strict";
+
+        var api = typeof window !== "undefined" ? window.WaxSeal : undefined;
+        var form = document.getElementById("demo-form");
+        var input = document.getElementById("demo-input");
+        var pathInput = document.getElementById("demo-path");
+        var status = document.getElementById("demo-status");
+        var rootOut = document.getElementById("demo-root");
+        var orderOut = document.getElementById("demo-order");
+        var membersBody = document.getElementById("demo-members");
+        var proofOut = document.getElementById("demo-proof");
+        var verifyButton = document.getElementById("demo-verify");
+        var proofStatus = document.getElementById("demo-proof-status");
+
+        var state = null;
+
+        function setStatus(node, message, kind) {
+          node.textContent = message;
+          node.className = kind ? "demo-status " + kind : "demo-status";
+        }
+
+        if (!api || typeof api.buildMerkle !== "function") {
+          setStatus(status, "The waxseal demo bundle did not load.", "is-err");
+          return;
+        }
+
+        function parse(text) {
+          var members = [];
+          var errors = [];
+          var lines = text.split(/\r?\n/);
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+            if (!line.trim() || line.trim().charAt(0) === "#") continue;
+            var eq = line.indexOf("=");
+            if (eq === -1) {
+              errors.push("Line " + (i + 1) + ": expected path=content");
+              continue;
+            }
+            var path = line.slice(0, eq).trim();
+            var content = line.slice(eq + 1);
+            if (!path) {
+              errors.push("Line " + (i + 1) + ": empty path");
+              continue;
+            }
+            members.push({ path: path, content: content });
+          }
+          return { members: members, errors: errors };
+        }
+
+        function clearMembers() {
+          while (membersBody.firstChild) {
+            membersBody.removeChild(membersBody.firstChild);
+          }
+        }
+
+        function row(values) {
+          var tr = document.createElement("tr");
+          for (var i = 0; i < values.length; i++) {
+            var td = document.createElement("td");
+            td.textContent = values[i];
+            tr.appendChild(td);
+          }
+          return tr;
+        }
+
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          state = null;
+          clearMembers();
+          proofOut.textContent = "";
+          setStatus(proofStatus, "Not verified yet.", "");
+
+          var parsed = parse(input.value);
+          if (parsed.errors.length > 0) {
+            rootOut.textContent = "";
+            orderOut.textContent = "";
+            setStatus(status, parsed.errors.join(" "), "is-err");
+            return;
+          }
+          if (parsed.members.length === 0) {
+            rootOut.textContent = "";
+            orderOut.textContent = "";
+            setStatus(status, "Add at least one member line (path=content).", "is-err");
+            return;
+          }
+
+          var encoder = new TextEncoder();
+          var digests = parsed.members.map(function (member) {
+            var bytes = encoder.encode(member.content);
+            return {
+              path: member.path,
+              sha256: api.sha256Hex(bytes),
+              size: bytes.length,
+            };
+          });
+
+          var tree = api.buildMerkle(digests);
+          var digestByPath = {};
+          for (var i = 0; i < digests.length; i++) {
+            digestByPath[digests[i].path] = digests[i].sha256;
+          }
+
+          rootOut.textContent = tree.root;
+          orderOut.textContent = tree.leafOrder
+            .map(function (p, index) {
+              return index + 1 + ". " + p;
+            })
+            .join("\n");
+
+          clearMembers();
+          for (var j = 0; j < digests.length; j++) {
+            membersBody.appendChild(
+              row([digests[j].path, digests[j].sha256, digests[j].size + " B"])
+            );
+          }
+
+          var chosen = (pathInput.value || "").trim();
+          if (!chosen || digestByPath[chosen] === undefined) {
+            chosen = digests[0].path;
+          }
+          pathInput.value = chosen;
+
+          var proof = api.proveInclusion(tree, chosen);
+          if (!proof) {
+            setStatus(status, "Could not build a proof for " + chosen + ".", "is-err");
+            return;
+          }
+
+          state = {
+            path: chosen,
+            sha256: digestByPath[chosen],
+            proof: proof,
+            root: tree.root,
+          };
+          proofOut.textContent = JSON.stringify(proof, null, 2);
+
+          var verified = api.verifyInclusion(
+            chosen,
+            digestByPath[chosen],
+            proof,
+            tree.root
+          );
+          setStatus(
+            status,
+            "Root computed from " +
+              digests.length +
+              " member" +
+              (digests.length === 1 ? "" : "s") +
+              " and an inclusion proof generated for " +
+              chosen +
+              ". Nothing left this tab.",
+            verified ? "is-ok" : "is-err"
+          );
+        });
+
+        verifyButton.addEventListener("click", function () {
+          if (!state) {
+            setStatus(proofStatus, "Run the demo first to generate a proof.", "is-err");
+            return;
+          }
+          var ok = api.verifyInclusion(
+            state.path,
+            state.sha256,
+            state.proof,
+            state.root
+          );
+          setStatus(
+            proofStatus,
+            ok
+              ? "Proof verified: " + state.path + " is a member of root " + state.root
+              : "Proof did NOT verify against root " + state.root,
+            ok ? "is-ok" : "is-err"
+          );
+        });
+      })();
+    </script>
+  </body>
+</html>

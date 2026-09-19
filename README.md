@@ -105,6 +105,27 @@ const result = verifySeal(seal, archive, { strictBytes: true });
 // { ok, root, signatureOk, reasons, added, removed, modified }
 ```
 
+## Website
+
+A self-contained product site lives in [`site/`](site/) and ships with the
+repo. The live site is at
+**[https://waxseal-srivtx.vercel.app](https://waxseal-srivtx.vercel.app)**.
+
+The page embeds an interactive demo that runs the real Merkle and
+inclusion-proof code in the browser (Ed25519 key operations still require the
+CLI). It is static, makes no external requests, and needs no build at deploy
+time: `site/assets/demo.js` is committed.
+
+Preview it locally:
+
+```bash
+bun run build:site   # bundle src/index.ts -> site/assets/demo.js
+bunx serve site      # or: python3 -m http.server --directory site
+```
+
+Then open `http://localhost:3000` (or the port your static server prints). Run
+`bun run check:site` to verify links, classes, and page structure.
+
 ## Canonicalization
 
 The Merkle root is deterministic and independent of how the ZIP was produced.
