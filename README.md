@@ -2,7 +2,9 @@
 
 # waxseal
 
-**Detached Ed25519 Merkle seal for WACZ web archives — sign once, verify offline anywhere.**
+> Seal the archive. Prove any file.
+
+**Detached Ed25519 Merkle seals for WACZ web archives.**
 
 [![CI](https://github.com/srivtx/waxseal/actions/workflows/ci.yml/badge.svg)](https://github.com/srivtx/waxseal/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/srivtx/waxseal?sort=semver&color=4f46e5)](https://github.com/srivtx/waxseal/releases)
@@ -42,8 +44,21 @@ without shipping the archive.
 
 ## Install
 
+`waxseal` is not published to npm. Install it from GitHub with the one-line script (requires [Bun](https://bun.sh)):
+
 ```bash
-bun install
+# One-line install (installs the `waxseal` binary)
+curl -fsSL https://raw.githubusercontent.com/srivtx/waxseal/main/install.sh | sh
+
+# Or run once, without installing
+bunx github:srivtx/waxseal seal archive.wacz
+
+# Install globally
+bun add -g github:srivtx/waxseal
+waxseal seal archive.wacz
+
+# Add to a project as a dev dependency
+bun add -d github:srivtx/waxseal
 ```
 
 ## Usage
@@ -116,7 +131,24 @@ inclusion-proof code in the browser (Ed25519 key operations still require the
 CLI). It is static, makes no external requests, and needs no build at deploy
 time: `site/assets/demo.js` is committed.
 
-Preview it locally:
+## Development
+
+Clone the repository and install its dependencies with Bun:
+
+```bash
+git clone https://github.com/srivtx/waxseal
+cd waxseal
+bun install
+```
+
+Run the tests and the type check:
+
+```bash
+bun test
+bunx tsc --noEmit
+```
+
+Rebuild the bundled browser demo and preview the site locally:
 
 ```bash
 bun run build:site   # bundle src/index.ts -> site/assets/demo.js
