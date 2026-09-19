@@ -18,6 +18,8 @@
 
 **Live site:** [waxseal](https://waxseal-srivtx.vercel.app)  ·  **Demo:** [https://waxseal-srivtx.vercel.app/#demo](https://waxseal-srivtx.vercel.app/#demo)  ·  **Source:** [github.com/srivtx/waxseal](https://github.com/srivtx/waxseal)  ·  **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
+**Docs:** [Commands](https://waxseal-srivtx.vercel.app/commands)  ·  [Usage](https://waxseal-srivtx.vercel.app/usage)  ·  [CI](https://waxseal-srivtx.vercel.app/ci)  ·  [FAQ](https://waxseal-srivtx.vercel.app/faq)
+
 ## What a WACZ is, and what is missing
 
 A **WACZ** is a ZIP of web-archive files. It carries its own integrity chain:
@@ -308,6 +310,21 @@ No network code. Signing and verification use `node:crypto` locally.
 - **odflens** — ODT/ODS/ODP accessibility audit
 - **iconlens** — standalone SVG accessibility lint
 - **waxseal** — detached Ed25519 seal for WACZ web archives *(this repo)*
+
+## For agents
+
+Every tool emits stable JSON with `--json` and SARIF 2.1.0, with a documented
+exit-code scheme, so an agent can read findings without scraping a screen.
+
+- **Docs index:** the site serves a machine-readable index at
+  [waxseal-srivtx.vercel.app/llms.txt](https://waxseal-srivtx.vercel.app/llms.txt).
+- **MCP server:** [lenses-mcp](https://github.com/srivtx/lenses-mcp) exposes all
+  five tools over stdio (audit for each format, plus `booklens_fix`,
+  `waxseal_seal`, `waxseal_verify`, `waxseal_inspect`).
+
+  ```json
+  { "mcpServers": { "lenses": { "command": "bunx", "args": ["github:srivtx/lenses-mcp#main"] } } }
+  ```
 
 ## License
 

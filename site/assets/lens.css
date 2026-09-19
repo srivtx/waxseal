@@ -75,7 +75,7 @@
   --ink: #0a0a0a;
   --body: #3f3f46;
   --mute: #71717a;
-  --faint: #a1a1aa;
+  --faint: #6f6f78;
 
   --success: #15803d;
   --warning: #b45309;
@@ -118,7 +118,7 @@
   --ink: #fafafa;
   --body: #c4c4ca;
   --mute: #8b8b93;
-  --faint: #62626b;
+  --faint: #8b8b93;
 
   --success: #4ade80;
   --warning: #fbbf24;
@@ -138,7 +138,7 @@
     --ink: #fafafa;
     --body: #c4c4ca;
     --mute: #8b8b93;
-    --faint: #62626b;
+    --faint: #8b8b93;
     --success: #4ade80;
     --warning: #fbbf24;
     --error: #f87171;
