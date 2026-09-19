@@ -24,12 +24,24 @@ backports.
 - **No telemetry.** Nothing about your archives, your keys, your usage, or your
   machine is collected or transmitted.
 - **Archives and keys never leave the machine.** Hashing, tree construction,
-  signing, and verification all run in-process and locally. Private keys are
-  read from the path you give and are never copied elsewhere.
+  signing, and verification all run in-process and locally. A private key passed
+  with `--key` is read from the path you give and is never copied elsewhere.
+- **Generated keys are explicit.** When `seal` runs without `--key` it
+  generates a key pair in memory. By default the private key is ephemeral and is
+  **not** written to disk; only the signature (verifiable with the embedded
+  public key) is persisted. To keep the pair, pass `--write-key`, which writes
+  `<archive>.key.pem` next to the archive with file mode `0600` and
+  `<archive>.key.pub.pem` with mode `0644`. Writing the private key is opt-in
+  and reported on stderr.
 - **Untrusted input.** A WACZ is treated as hostile: ZIP members and
   `datapackage.json` are parsed defensively, and a malformed, deeply nested, or
   oversized archive must fail safely rather than escape the working directory or
-  exhaust the process.
+  exhaust the process. Members are hashed in memory and archives are **never
+  extracted to disk**, so symlink or special-file entries cannot be followed or
+  materialized. Member paths are normalized before hashing: absolute paths,
+  `..` segments, Windows backslashes, drive letters (`C:`), and percent-encoded
+  separators or dots (`%2e`, `%2f`, `%5c`, `%00`) are rejected, not silently
+  rewritten.
 - **Canonical hashing matters.** A seal is only meaningful if the Merkle root is
   computed over a deterministic, documented serialization; changes to member
   ordering or normalization are security-relevant and reviewed as such.

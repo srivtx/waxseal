@@ -41,16 +41,29 @@ function isDirectoryEntry(name: string): boolean {
 
 /**
  * Canonical member path: Unicode NFC, forward slashes, no leading `./`, no
- * absolute paths, and no `..` or empty segments. Throws for anything that
- * cannot be a safe relative member path.
+ * absolute paths, and no `..` or empty segments. Also rejects Windows-style
+ * backslashes, drive-letter prefixes, and percent-encoded `/`, `\`, `.`, or
+ * NUL bytes (e.g. `%2e%2e/x`), which ZIP tools and URL layers may decode into
+ * traversals. Throws for anything that cannot be a safe relative member path.
  */
 export function normalizeMemberPath(raw: string): string {
   let path = raw.normalize("NFC");
   while (path.startsWith("./")) path = path.slice(2);
 
   if (path === "") throw new Error(`empty member path: ${JSON.stringify(raw)}`);
+  if (path.includes("\\")) {
+    throw new Error(`backslash in member path: ${JSON.stringify(raw)}`);
+  }
+  if (/^[A-Za-z]:/.test(path)) {
+    throw new Error(`absolute member path: ${JSON.stringify(raw)}`);
+  }
   if (path.startsWith("/")) {
     throw new Error(`absolute member path: ${JSON.stringify(raw)}`);
+  }
+  if (/%2e|%2f|%5c|%00/i.test(path)) {
+    throw new Error(
+      `percent-encoded path segment in member path: ${JSON.stringify(raw)}`,
+    );
   }
 
   const segments = path.split("/");

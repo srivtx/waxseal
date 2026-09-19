@@ -1,6 +1,6 @@
 /// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -143,10 +143,12 @@ describe("cli round trip", () => {
 });
 
 describe("cli metadata", () => {
-  test("--version prints the package version and exits 0", async () => {
+  test("--version prints exactly the version string and exits 0", async () => {
     const result = await runCli(["--version"], process.cwd());
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.trim()).toMatch(/^waxseal \d+\.\d+\.\d+/);
+    expect(result.stdout).toBe(`${(await Bun.file(
+      join(import.meta.dir, "..", "package.json"),
+    ).json() as { version: string }).version}\n`);
   });
 
   test("--help lists the commands and exits 0", async () => {
@@ -154,6 +156,22 @@ describe("cli metadata", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Usage:");
     expect(result.stdout).toContain("proof-verify");
+  });
+
+  test("--help enumerates every flag and documents the exit codes", async () => {
+    const result = await runCli(["--help"], process.cwd());
+    expect(result.exitCode).toBe(0);
+    for (const flag of [
+      "--out",
+      "--key",
+      "--member-only",
+      "--created-at",
+      "--write-key",
+    ]) {
+      expect(result.stdout).toContain(flag);
+    }
+    expect(result.stdout).toContain("Exit codes:");
+    expect(result.stdout).toContain("3  I/O failure");
   });
 });
 
@@ -723,4 +741,230 @@ describe("cli proof-verify tamper detection", () => {
     }
   });
 });
+
+describe("cli argument contract", () => {
+  test("unknown options are rejected with usage and exit 2", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "good.wacz");
+      await Bun.write(archivePath, defaultWacz());
+
+      const result = await runCli(["inspect", archivePath, "--nope"], dir);
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("waxseal: unknown option --nope");
+      expect(result.stderr).toContain("Usage:");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("boolean flags do not consume the following token", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "good.wacz");
+      await Bun.write(archivePath, defaultWacz());
+
+      const result = await runCli(["inspect", "--json", archivePath], dir);
+      expect(result.exitCode).toBe(0);
+      const parsed = JSON.parse(result.stdout) as { members?: unknown[] };
+      expect(parsed.members?.length).toBeGreaterThan(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("only value flags consume the next token", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "good.wacz");
+      await Bun.write(archivePath, defaultWacz());
+
+      const missing = await runCli(["inspect", "--out"], dir);
+      expect(missing.exitCode).toBe(2);
+      expect(missing.stderr).toContain("--out requires a value");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("-- ends option parsing", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "good.wacz");
+      await Bun.write(archivePath, defaultWacz());
+
+      const result = await runCli(["inspect", "--", archivePath], dir);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("archive:");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli exit codes and error framing", () => {
+  test("a missing archive is an I/O failure (exit 3)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const missing = join(dir, "does-not-exist.wacz");
+      for (const args of [
+        ["inspect", missing],
+        ["seal", missing],
+        ["verify", missing, "-s", join(dir, "seal.json")],
+      ]) {
+        const result = await runCli(args, dir);
+        expect(result.exitCode).toBe(3);
+        expect(result.stderr.startsWith("waxseal: ")).toBe(true);
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a missing seal file is an I/O failure (exit 3)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      await Bun.write(archivePath, defaultWacz());
+
+      const result = await runCli(
+        ["verify", archivePath, "-s", join(dir, "missing-seal.json")],
+        dir,
+      );
+      expect(result.exitCode).toBe(3);
+      expect(result.stderr).toContain("waxseal: failed to read");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("usage errors exit 2 with a single waxseal: line", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const result = await runCli(["verify"], dir);
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr.startsWith("waxseal: ")).toBe(true);
+      expect(result.stderr.trim().split("\n")).toHaveLength(1);
+      expect(result.stderr).not.toContain("error:");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli key handling", () => {
+  test("seal without --key does not write a private key by default", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const sealPath = join(dir, "seal.json");
+      await Bun.write(archivePath, defaultWacz());
+
+      const result = await runCli(["seal", archivePath, "--out", sealPath], dir);
+      expect(result.exitCode).toBe(0);
+      expect(await Bun.file(`${archivePath}.key.pem`).exists()).toBe(false);
+      expect(result.stderr).toContain("NOT saved");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("--write-key saves the private key with mode 0600", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const sealPath = join(dir, "seal.json");
+      await Bun.write(archivePath, defaultWacz());
+
+      const result = await runCli(
+        ["seal", archivePath, "--out", sealPath, "--write-key"],
+        dir,
+      );
+      expect(result.exitCode).toBe(0);
+
+      const keyPath = `${archivePath}.key.pem`;
+      const pubPath = `${archivePath}.key.pub.pem`;
+      expect(await Bun.file(keyPath).exists()).toBe(true);
+      expect(await Bun.file(pubPath).exists()).toBe(true);
+      expect((await stat(keyPath)).mode & 0o777).toBe(0o600);
+      expect((await stat(pubPath)).mode & 0o777).toBe(0o644);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli reproducible seals", () => {
+  test("two seals with the same --created-at are byte-identical", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      const keyBase = join(dir, "key");
+      const firstPath = join(dir, "first.seal.json");
+      const secondPath = join(dir, "second.seal.json");
+      const createdAt = "2024-01-01T00:00:00.000Z";
+      await Bun.write(archivePath, defaultWacz());
+      await runCli(["keygen", "--out", keyBase], dir);
+
+      const first = await runCli(
+        [
+          "seal",
+          archivePath,
+          "--key",
+          `${keyBase}.pem`,
+          "--created-at",
+          createdAt,
+          "--out",
+          firstPath,
+        ],
+        dir,
+      );
+      expect(first.exitCode).toBe(0);
+
+      const second = await runCli(
+        [
+          "seal",
+          archivePath,
+          "--key",
+          `${keyBase}.pem`,
+          "--created-at",
+          createdAt,
+          "--out",
+          secondPath,
+        ],
+        dir,
+      );
+      expect(second.exitCode).toBe(0);
+
+      const firstBytes = await Bun.file(firstPath).arrayBuffer();
+      const secondBytes = await Bun.file(secondPath).arrayBuffer();
+      expect(new Uint8Array(firstBytes)).toEqual(new Uint8Array(secondBytes));
+
+      const parsed = JSON.parse(await Bun.file(firstPath).text()) as {
+        createdAt?: string;
+      };
+      expect(parsed.createdAt).toBe(createdAt);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a non-ISO --created-at is a usage error (exit 2)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "waxseal-cli-"));
+    try {
+      const archivePath = join(dir, "archive.wacz");
+      await Bun.write(archivePath, defaultWacz());
+
+      const result = await runCli(
+        ["seal", archivePath, "--created-at", "not-a-date", "--out", join(dir, "s.json")],
+        dir,
+      );
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("--created-at");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 

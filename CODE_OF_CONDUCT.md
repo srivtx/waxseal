@@ -64,9 +64,9 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement through the
-repository at https://github.com/srivtx/waxseal (use the Security tab for a
-private report). All complaints will be reviewed and investigated promptly and
-fairly.
+project repository at https://github.com/srivtx/waxseal, or privately via
+GitHub Security Advisories at https://github.com/srivtx/waxseal/security/advisories/new.
+All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the
 reporter of any incident.

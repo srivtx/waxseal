@@ -2,6 +2,7 @@
 /// <reference types="bun" />
 
 import { createPublicKey } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { generateKeyPair, publicKeyBase64 } from "./keys.ts";
 import {
   PROOF_VERSION,
@@ -23,7 +24,7 @@ Commands:
   keygen [--out <base>] [--force]       Generate an Ed25519 key pair
                                         (default base: waxseal-key; refuses to
                                         overwrite unless --force/--yes)
-  seal <archive.wacz> [--key <pem>] [--out <seal.json>] [--proofs <proofs.json>] [--json]
+  seal <archive.wacz> [--key <pem>] [--out <seal.json>] [--proofs <proofs.json>] [--created-at <iso>] [--write-key] [--json]
                                         Create a detached seal for an archive
   verify <archive.wacz> -s <seal.json> [--public-key <pem|base64>] [--root <hex>] [--json] [--member-only]
                                         Verify an archive against a seal.
@@ -51,20 +52,38 @@ Commands:
   inspect <archive.wacz> [--json]       Inspect members, digest status, root
 
 Options:
+  --out <file>                          Output file (keygen base name; seal
+                                        output path)
+  --key <pem>                           Private key to sign with (seal)
   -s, --seal <file>                     Seal file (verify, proof-verify)
   --proofs <file>                       Proofs file (seal, proof-verify)
   --path <member>                       Only verify this proof (proof-verify)
   --public-key <pem|base64>             Pin the expected SPKI public key (verify)
   --root <hex>                          Pin the expected Merkle root (verify, proof-verify)
   --sha256 <hex>                        Member content hash for offline proof-verify
+  --created-at <iso>                    Fixed ISO-8601 timestamp; the same
+                                        archive, key, and timestamp produce a
+                                        byte-identical seal (seal)
+  --write-key                           With seal and no --key, save the
+                                        generated key pair next to the archive
+                                        (private key mode 0600); without it the
+                                        generated key is ephemeral and not saved
+  --member-only                         Allow a re-zip instead of strict
+                                        byte-for-byte verification (verify)
   --force, --yes                        Overwrite existing key files (keygen)
   --json                                Machine-readable output (seal, verify,
                                         proof-verify, inspect)
   -h, --help                            Show this help
   -v, --version                         Show the version
+
+Exit codes:
+  0  success
+  1  findings or verification failure
+  2  usage or argument error
+  3  I/O failure (missing or unreadable file)
 `;
 
-const VALUE_OPTIONS = [
+const VALUE_OPTIONS = new Set([
   "--out",
   "--key",
   "-s",
@@ -74,9 +93,31 @@ const VALUE_OPTIONS = [
   "--public-key",
   "--root",
   "--sha256",
-];
+  "--created-at",
+]);
+
+const BOOLEAN_OPTIONS = new Set([
+  "--json",
+  "--member-only",
+  "--write-key",
+  "--force",
+  "--yes",
+  "-h",
+  "--help",
+  "-v",
+  "--version",
+]);
+
+const KNOWN_OPTIONS = new Set([...VALUE_OPTIONS, ...BOOLEAN_OPTIONS]);
+
+const EXIT_OK = 0;
+const EXIT_FINDINGS = 1;
+const EXIT_USAGE = 2;
+const EXIT_IO = 3;
 
 const HEX64 = /^[0-9a-f]{64}$/;
+
+class UsageError extends Error {}
 
 interface ParsedArgs {
   positionals: string[];
@@ -86,26 +127,46 @@ interface ParsedArgs {
 function parseArgs(argv: string[]): ParsedArgs {
   const positionals: string[] = [];
   const options = new Map<string, string>();
+  let endOfOptions = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
+    if (endOfOptions) {
+      positionals.push(arg);
+      continue;
+    }
+    if (arg === "--") {
+      endOfOptions = true;
+      continue;
+    }
     if (!arg.startsWith("-") || arg === "-") {
       positionals.push(arg);
       continue;
     }
 
     const eq = arg.indexOf("=");
-    if (eq !== -1) {
-      options.set(arg.slice(0, eq), arg.slice(eq + 1));
-      continue;
+    const name = eq !== -1 ? arg.slice(0, eq) : arg;
+    if (!KNOWN_OPTIONS.has(name)) {
+      throw new UsageError(`unknown option ${name}`);
     }
 
-    const next = argv[i + 1];
-    if (next !== undefined && !next.startsWith("-")) {
-      options.set(arg, next);
-      i++;
+    if (VALUE_OPTIONS.has(name)) {
+      if (eq !== -1) {
+        const value = arg.slice(eq + 1);
+        if (value === "") throw new UsageError(`${name} requires a value`);
+        options.set(name, value);
+      } else {
+        const next = argv[i + 1];
+        if (next === undefined || (next.startsWith("-") && next !== "-")) {
+          throw new UsageError(`${name} requires a value`);
+        }
+        options.set(name, next);
+        i++;
+      }
+    } else if (eq !== -1) {
+      options.set(name, arg.slice(eq + 1));
     } else {
-      options.set(arg, "");
+      options.set(name, "");
     }
   }
 
@@ -131,9 +192,9 @@ function flagEnabled(options: Map<string, string>, ...names: string[]): boolean 
   return false;
 }
 
-function fail(message: string): number {
-  process.stderr.write(`${message}\n`);
-  return 1;
+function fail(message: string, code: number = EXIT_USAGE): number {
+  process.stderr.write(`waxseal: ${message}\n`);
+  return code;
 }
 
 function errorMessage(error: unknown): string {
@@ -199,16 +260,17 @@ async function cmdKeygen(args: ParsedArgs): Promise<number> {
 
   if (existing.length > 0 && !overwrite) {
     return fail(
-      `keygen: refusing to overwrite ${existing.join(", ")}; pass --force to replace`,
+      `refusing to overwrite ${existing.join(", ")}; pass --force to replace`,
+      EXIT_FINDINGS,
     );
   }
 
   const { publicKeyPem, privateKeyPem } = generateKeyPair();
-  await Bun.write(privatePath, privateKeyPem);
-  await Bun.write(publicPath, publicKeyPem);
+  await writeFile(privatePath, privateKeyPem, { mode: 0o600 });
+  await writeFile(publicPath, publicKeyPem, { mode: 0o644 });
 
   console.log(publicKeyBase64(publicKeyPem));
-  return 0;
+  return EXIT_OK;
 }
 
 async function cmdSeal(args: ParsedArgs): Promise<number> {
@@ -218,12 +280,16 @@ async function cmdSeal(args: ParsedArgs): Promise<number> {
   const out = getOption(args.options, "--out") ?? `${archive}.seal.json`;
   const proofsPath = getOption(args.options, "--proofs");
   const keyPath = getOption(args.options, "--key");
+  const createdAt = getOption(args.options, "--created-at");
+  if (createdAt !== undefined && Number.isNaN(Date.parse(createdAt))) {
+    return fail("--created-at must be an ISO-8601 timestamp");
+  }
 
   let data: Uint8Array;
   try {
     data = await readBytes(archive);
   } catch (error) {
-    return fail(`seal: failed to read ${archive}: ${errorMessage(error)}`);
+    return fail(`failed to read ${archive}: ${errorMessage(error)}`, EXIT_IO);
   }
 
   let privateKeyPem: string;
@@ -235,7 +301,7 @@ async function cmdSeal(args: ParsedArgs): Promise<number> {
       privateKeyPem = await Bun.file(keyPath).text();
       publicKeyPem = publicPemFromPrivate(privateKeyPem);
     } catch (error) {
-      return fail(`seal: failed to read key ${keyPath}: ${errorMessage(error)}`);
+      return fail(`failed to read key ${keyPath}: ${errorMessage(error)}`, EXIT_IO);
     }
   } else {
     const pair = generateKeyPair();
@@ -247,32 +313,52 @@ async function cmdSeal(args: ParsedArgs): Promise<number> {
   let seal;
   let proofs;
   try {
-    seal = createSeal(data, privateKeyPem, publicKeyPem);
+    seal =
+      createdAt === undefined
+        ? createSeal(data, privateKeyPem, publicKeyPem)
+        : createSeal(data, privateKeyPem, publicKeyPem, createdAt);
     if (proofsPath) proofs = createProofDocument(data);
   } catch (error) {
-    return fail(`seal: failed to seal ${archive}: ${errorMessage(error)}`);
+    return fail(`failed to seal ${archive}: ${errorMessage(error)}`, EXIT_FINDINGS);
   }
 
-  await Bun.write(out, sealToJson(seal));
+  try {
+    await Bun.write(out, sealToJson(seal));
+  } catch (error) {
+    return fail(`failed to write ${out}: ${errorMessage(error)}`, EXIT_IO);
+  }
 
   if (generated) {
-    const keyOut = `${archive}.key.pem`;
-    await Bun.write(keyOut, privateKeyPem);
-    await Bun.write(`${archive}.key.pub.pem`, publicKeyPem);
-
-    console.warn("WARNING: no --key was provided; a NEW key pair was generated.");
-    console.warn(`  private key: ${keyOut}`);
-    console.warn(`  public key:  ${archive}.key.pub.pem`);
-    console.warn("  Keep the private key safe; it is required to sign again.");
+    if (flagEnabled(args.options, "--write-key")) {
+      const keyOut = `${archive}.key.pem`;
+      const pubOut = `${archive}.key.pub.pem`;
+      try {
+        await writeFile(keyOut, privateKeyPem, { mode: 0o600 });
+        await writeFile(pubOut, publicKeyPem, { mode: 0o644 });
+      } catch (error) {
+        return fail(`failed to write key ${keyOut}: ${errorMessage(error)}`, EXIT_IO);
+      }
+      process.stderr.write(
+        `waxseal: wrote generated key pair (private ${keyOut} mode 0600, public ${pubOut})\n`,
+      );
+    } else {
+      process.stderr.write(
+        "waxseal: no --key provided; generated an ephemeral key that is NOT saved. Pass --write-key to save it.\n",
+      );
+    }
   }
 
   if (proofsPath && proofs) {
-    await Bun.write(proofsPath, JSON.stringify(proofs, null, 2));
+    try {
+      await Bun.write(proofsPath, JSON.stringify(proofs, null, 2));
+    } catch (error) {
+      return fail(`failed to write ${proofsPath}: ${errorMessage(error)}`, EXIT_IO);
+    }
   }
 
   if (flagEnabled(args.options, "--json")) {
     console.log(sealToJson(seal));
-    return 0;
+    return EXIT_OK;
   }
 
   console.log(`archive:     ${archive}`);
@@ -281,7 +367,7 @@ async function cmdSeal(args: ParsedArgs): Promise<number> {
   console.log(`memberCount: ${seal.memberCount}`);
   console.log(`algorithm:   ${seal.algorithm}`);
   console.log(`signature:   ${seal.signature.slice(0, 24)}...`);
-  return 0;
+  return EXIT_OK;
 }
 
 async function cmdVerify(args: ParsedArgs): Promise<number> {
@@ -294,27 +380,35 @@ async function cmdVerify(args: ParsedArgs): Promise<number> {
   const publicKey = getOption(args.options, "--public-key");
   const expectedRoot = getOption(args.options, "--root");
   if (expectedRoot !== undefined && !HEX64.test(expectedRoot)) {
-    return fail("verify: --root must be a 64-character hex string");
+    return fail("--root must be a 64-character hex string");
   }
 
-  let result: VerifyResult;
+  let data: Uint8Array;
   try {
-    const data = await readBytes(archive);
-    const sealJson = await Bun.file(sealPath).text();
-    const expectedPublicKey =
-      publicKey === undefined ? undefined : await resolvePublicKey(publicKey);
-    result = verifySealJson(sealJson, data, {
-      strictBytes: !flagEnabled(args.options, "--member-only"),
-      expectedRoot,
-      expectedPublicKey,
-    });
+    data = await readBytes(archive);
   } catch (error) {
-    result = failureResult([errorMessage(error)]);
+    return fail(`failed to read ${archive}: ${errorMessage(error)}`, EXIT_IO);
   }
+
+  let sealJson: string;
+  try {
+    sealJson = await Bun.file(sealPath).text();
+  } catch (error) {
+    return fail(`failed to read ${sealPath}: ${errorMessage(error)}`, EXIT_IO);
+  }
+
+  const expectedPublicKey =
+    publicKey === undefined ? undefined : await resolvePublicKey(publicKey);
+
+  const result = verifySealJson(sealJson, data, {
+    strictBytes: !flagEnabled(args.options, "--member-only"),
+    expectedRoot,
+    expectedPublicKey,
+  });
 
   if (flagEnabled(args.options, "--json")) {
     console.log(JSON.stringify(result, null, 2));
-    return result.ok ? 0 : 1;
+    return result.ok ? EXIT_OK : EXIT_FINDINGS;
   }
 
   console.log(result.ok ? "OK" : "FAILED");
@@ -350,7 +444,7 @@ async function cmdVerify(args: ParsedArgs): Promise<number> {
     console.log(`reason:      ${reason}`);
   }
 
-  return result.ok ? 0 : 1;
+  return result.ok ? EXIT_OK : EXIT_FINDINGS;
 }
 
 interface ProofVerifyEntry {
@@ -457,10 +551,10 @@ async function cmdProofVerify(args: ParsedArgs): Promise<number> {
     );
   }
   if (rootOption !== undefined && !HEX64.test(rootOption)) {
-    return fail("proof-verify: --root must be a 64-character hex string");
+    return fail("--root must be a 64-character hex string");
   }
   if (shaOption !== undefined && !HEX64.test(shaOption)) {
-    return fail("proof-verify: --sha256 must be a 64-character hex string");
+    return fail("--sha256 must be a 64-character hex string");
   }
 
   const failure = (reason: string): number => {
@@ -468,32 +562,38 @@ async function cmdProofVerify(args: ParsedArgs): Promise<number> {
       console.log(
         JSON.stringify({ ok: false, reasons: [reason], results: [] }, null, 2),
       );
-      return 1;
+      return EXIT_FINDINGS;
     }
-    return fail(reason);
+    return fail(reason, EXIT_FINDINGS);
   };
+
+  let proofsText: string;
+  try {
+    proofsText = await Bun.file(proofsPath).text();
+  } catch (error) {
+    return fail(
+      `failed to read ${proofsPath}: ${errorMessage(error)}`,
+      EXIT_IO,
+    );
+  }
 
   let raw: unknown;
   try {
-    raw = JSON.parse(await Bun.file(proofsPath).text());
+    raw = JSON.parse(proofsText);
   } catch (error) {
-    return failure(
-      `proof-verify: failed to read ${proofsPath}: ${errorMessage(error)}`,
-    );
+    return failure(`invalid JSON in ${proofsPath}: ${errorMessage(error)}`);
   }
 
   let document: { root?: string; proofs: Record<string, NormalizedProof> };
   try {
     document = normalizeProofs(raw);
   } catch (error) {
-    return failure(`proof-verify: ${errorMessage(error)}`);
+    return failure(errorMessage(error));
   }
   const proofs = document.proofs;
 
   if (pathFilter && !Object.hasOwn(proofs, pathFilter)) {
-    return fail(
-      `proof-verify: no proof for path "${pathFilter}" in ${proofsPath}`,
-    );
+    return failure(`no proof for path "${pathFilter}" in ${proofsPath}`);
   }
 
   let digestByPath: Map<string, string> | undefined;
@@ -504,29 +604,41 @@ async function cmdProofVerify(args: ParsedArgs): Promise<number> {
   const declaredRoot = document.root;
 
   if (archive) {
+    let bytes: Uint8Array;
     try {
-      const digests = memberDigests(await readBytes(archive));
+      bytes = await readBytes(archive);
+    } catch (error) {
+      return fail(`failed to read ${archive}: ${errorMessage(error)}`, EXIT_IO);
+    }
+    try {
+      const digests = memberDigests(bytes);
       digestByPath = new Map(digests.map((d) => [d.path, d.sha256]));
       archiveRoot = buildMerkle(digests).root;
     } catch (error) {
-      return failure(`proof-verify: ${errorMessage(error)}`);
+      return failure(errorMessage(error));
     }
   }
 
   if (sealPath) {
+    let sealText: string;
     try {
-      const parsed = JSON.parse(await Bun.file(sealPath).text()) as unknown;
+      sealText = await Bun.file(sealPath).text();
+    } catch (error) {
+      return fail(`failed to read ${sealPath}: ${errorMessage(error)}`, EXIT_IO);
+    }
+    try {
+      const parsed = JSON.parse(sealText) as unknown;
       const validation = validateSeal(parsed);
       if (!validation.ok || !validation.seal) {
-        return failure(`proof-verify: ${validation.reason ?? "invalid seal"}`);
+        return failure(validation.reason ?? "invalid seal");
       }
       if (!verifySealSignature(validation.seal)) {
-        return failure("proof-verify: seal signature verification failed");
+        return failure("seal signature verification failed");
       }
       root = validation.seal.root;
       anchor = `seal root ${validation.seal.root}`;
     } catch (error) {
-      return failure(`proof-verify: failed to read ${sealPath}: ${errorMessage(error)}`);
+      return failure(errorMessage(error));
     }
   } else if (rootOption !== undefined) {
     root = rootOption;
@@ -536,12 +648,12 @@ async function cmdProofVerify(args: ParsedArgs): Promise<number> {
     anchor = `proofs root ${declaredRoot}`;
   } else if (archiveRoot !== undefined) {
     return failure(
-      "proof-verify: proofs document declares no root and no --seal/--root pin was given; cannot establish a trusted anchor",
+      "proofs document declares no root and no --seal/--root pin was given; cannot establish a trusted anchor",
     );
   }
 
   if (root === undefined) {
-    return failure("proof-verify: could not determine a root to verify against");
+    return failure("could not determine a root to verify against");
   }
 
   if (archiveRoot !== undefined && archiveRoot !== root) {
@@ -590,7 +702,7 @@ async function cmdProofVerify(args: ParsedArgs): Promise<number> {
     console.log(
       JSON.stringify({ archive, root, ok, reasons, results }, null, 2),
     );
-    return ok ? 0 : 1;
+    return ok ? EXIT_OK : EXIT_FINDINGS;
   }
 
   console.log(`archive: ${archive ?? "(offline)"}`);
@@ -603,7 +715,7 @@ async function cmdProofVerify(args: ParsedArgs): Promise<number> {
     console.log(`${entry.ok ? "OK  " : "FAIL"} ${entry.path}${suffix}`);
   }
 
-  return ok ? 0 : 1;
+  return ok ? EXIT_OK : EXIT_FINDINGS;
 }
 
 async function cmdInspect(args: ParsedArgs): Promise<number> {
@@ -611,24 +723,14 @@ async function cmdInspect(args: ParsedArgs): Promise<number> {
   if (!archive) return fail("inspect: missing <archive.wacz>");
 
   const json = flagEnabled(args.options, "--json");
-  let inspection;
+  let bytes: Uint8Array;
   try {
-    inspection = inspectWacz(await readBytes(archive));
+    bytes = await readBytes(archive);
   } catch (error) {
-    if (json) {
-      console.log(
-        JSON.stringify(
-          { ok: false, issues: [errorMessage(error)], members: [], resources: [] },
-          null,
-          2,
-        ),
-      );
-    } else {
-      process.stderr.write(`${errorMessage(error)}\n`);
-    }
-    return 1;
+    return fail(`failed to read ${archive}: ${errorMessage(error)}`, EXIT_IO);
   }
 
+  const inspection = inspectWacz(bytes);
   const root = buildMerkle(inspection.members).root;
   const resources = inspection.resources.length;
 
@@ -636,7 +738,7 @@ async function cmdInspect(args: ParsedArgs): Promise<number> {
     console.log(
       JSON.stringify({ ...inspection, root, resourceCount: resources }, null, 2),
     );
-    return inspection.issues.length === 0 ? 0 : 1;
+    return inspection.issues.length === 0 ? EXIT_OK : EXIT_FINDINGS;
   }
 
   console.log(`archive:            ${archive}`);
@@ -651,7 +753,7 @@ async function cmdInspect(args: ParsedArgs): Promise<number> {
     console.log(`issue:              ${issue}`);
   }
 
-  return inspection.issues.length === 0 ? 0 : 1;
+  return inspection.issues.length === 0 ? EXIT_OK : EXIT_FINDINGS;
 }
 
 async function main(): Promise<number> {
@@ -659,24 +761,27 @@ async function main(): Promise<number> {
 
   if (argv.length === 0) {
     process.stderr.write(USAGE);
-    return 2;
+    return EXIT_USAGE;
   }
 
-  const parsed = parseArgs(argv);
-  for (const name of VALUE_OPTIONS) {
-    if (parsed.options.has(name) && parsed.options.get(name) === "") {
-      process.stderr.write(`error: ${name} requires a value\n`);
-      return 2;
+  let parsed: ParsedArgs;
+  try {
+    parsed = parseArgs(argv);
+  } catch (error) {
+    if (error instanceof UsageError) {
+      process.stderr.write(`waxseal: ${error.message}\n\n${USAGE}`);
+      return EXIT_USAGE;
     }
+    throw error;
   }
 
   if (flagEnabled(parsed.options, "-v", "--version")) {
-    process.stdout.write(`waxseal ${await packageVersion()}\n`);
-    return 0;
+    process.stdout.write(`${await packageVersion()}\n`);
+    return EXIT_OK;
   }
   if (flagEnabled(parsed.options, "-h", "--help")) {
     process.stdout.write(USAGE);
-    return 0;
+    return EXIT_OK;
   }
 
   const command = parsed.positionals.shift();
@@ -693,8 +798,10 @@ async function main(): Promise<number> {
     case "inspect":
       return cmdInspect(parsed);
     default:
-      process.stderr.write(`unknown command: ${String(command)}\n\n${USAGE}`);
-      return 2;
+      process.stderr.write(
+        `waxseal: unknown command: ${String(command)}\n\n${USAGE}`,
+      );
+      return EXIT_USAGE;
   }
 }
 
@@ -702,9 +809,7 @@ if (import.meta.main) {
   main()
     .then((code) => process.exit(code))
     .catch((error: unknown) => {
-      process.stderr.write(
-        `${error instanceof Error ? error.message : String(error)}\n`,
-      );
-      process.exit(1);
+      process.stderr.write(`waxseal: ${errorMessage(error)}\n`);
+      process.exit(EXIT_FINDINGS);
     });
 }

@@ -11,7 +11,7 @@
 [![license](https://img.shields.io/badge/license-MIT-0f766e)](LICENSE)
 [![runtime](https://img.shields.io/badge/runtime-Bun-14151A?logo=bun&logoColor=white)](https://bun.sh)
 [![types](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![tests](https://img.shields.io/badge/tests-63-0f766e)](#testing)
+[![tests](https://img.shields.io/badge/tests-78-0f766e)](#testing)
 [![network](https://img.shields.io/badge/network-none-0f766e)](#privacy)
 
 </div>
@@ -77,6 +77,9 @@ waxseal keygen --out archive-key
 waxseal seal capture.wacz --key archive-key.pem --out capture.seal.json
 waxseal seal capture.wacz --key archive-key.pem --proofs capture.proofs.json
 
+# Reproducible seal: same archive + key + timestamp => byte-identical output
+waxseal seal capture.wacz --key archive-key.pem --created-at 2024-01-01T00:00:00.000Z
+
 # 3. Verify it later, offline, against a pinned key or root
 waxseal verify capture.wacz -s capture.seal.json --public-key archive-key.pub.pem
 waxseal verify capture.wacz -s capture.seal.json --root <hex-root>
@@ -87,6 +90,38 @@ waxseal inspect capture.wacz --json
 
 `verify` defaults to a **strict byte-level** check. Pass `--member-only` to
 allow a legitimate re-zip.
+
+### Keys and reproducible seals
+
+`seal` needs a signing key. Pass one with `--key <pem>` (as above). If you omit
+it, `seal` generates a fresh key pair in memory: the signature is still valid
+and verifiable with the embedded public key, but the private key is **not saved**
+and the same seal cannot be produced twice. Add `--write-key` to opt in to
+saving the generated pair next to the archive:
+
+```bash
+waxseal seal capture.wacz --write-key
+# -> capture.wacz.key.pem      (private, mode 0600)
+# -> capture.wacz.key.pub.pem  (public,  mode 0644)
+```
+
+`--created-at <iso>` pins the seal's `createdAt` timestamp. With the same
+archive, key, and timestamp the entire seal file (including the Ed25519
+signature, which is deterministic) is byte-identical, so seals can be rebuilt
+and compared in CI. Without it, `createdAt` defaults to the current time and
+each run differs.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | success |
+| `1` | findings or verification failure (e.g. a tampered archive, a mismatched pin, a failed proof; `verify` prints `FAILED`) |
+| `2` | usage or argument error (unknown option, missing required argument, invalid flag value) |
+| `3` | I/O failure (a missing or unreadable archive, seal, key, or proofs file) |
+
+Errors are written to stderr on a single line prefixed with `waxseal: `.
+
 
 A seal carries its own `publicKey`, so on its own it only proves internal
 consistency: `verify` prints `trusted: no` and the signature is checked against
@@ -198,8 +233,11 @@ The Merkle root is deterministic and independent of how the ZIP was produced.
 
 - **Path-sorted leaves.** Every member is a leaf, ordered by normalized path.
   Normalization is Unicode NFC, forward-slash relative paths with any leading
-  `./` removed; directory entries are skipped, and absolute or `..` paths are
-  rejected.
+  `./` removed; directory entries are skipped. Absolute paths, `..` or empty
+  segments, Windows backslashes, drive letters (`C:...`), and percent-encoded
+  `.`/`/`/`\`/NUL bytes (`%2e`, `%2f`, `%5c`, `%00`) are **rejected** rather
+  than rewritten, because ZIP and URL layers may decode them into traversals.
+  Archives are hashed in memory and are never extracted to disk.
 - **Domain-separated leaves.** `leaf = SHA-256("waxseal:leaf:" + path + ":" + sha256(content))`
 - **Domain-separated nodes.** `node = SHA-256("waxseal:node:" + left + ":" + right)`
 - **Odd-node promotion.** The last node of an odd level is carried up unchanged
@@ -227,21 +265,24 @@ relaxes it for reproducible re-packaging. The library default is member-level.
 - With `strictBytes`, the file is byte-for-byte the one that was sealed.
 
 It does **not** prove identity or provide a trusted timestamp: `createdAt` is
-self-asserted by the signer. Pair the root with a timestamping authority if you
+self-asserted by the signer (pin it with `--created-at` when you need a
+reproducible, chosen value). Pair the root with a timestamping authority if you
 need a proven "existed before" time.
 
 ## Testing
 
 | Gate | Result |
 |---|---|
-| `bun test` | 63 tests |
+| `bun test` | 78 tests |
 | `bunx tsc --noEmit` | clean (strict) |
 | round trip | `keygen` → `seal` → `verify` succeeds; a tampered archive exits 1 |
 
-Tests cover determinism (re-zipped archives share a root), tamper detection with
-a previous-digest diff, wrong-key rejection, strict byte-level detection of
-appended bytes, signature coverage of `archiveSha256`, and inclusion proofs for
-every member.
+Tests cover determinism (re-zipped archives share a root, and two seals with the
+same `--created-at` are byte-identical), tamper detection with a previous-digest
+diff, wrong-key rejection, strict byte-level detection of appended bytes,
+signature coverage of `archiveSha256`, inclusion proofs for every member, the
+CLI argument contract (unknown options, boolean flags, `--`), and exit codes for
+usage and I/O failures.
 
 ## Privacy
 
@@ -258,7 +299,9 @@ No network code. Signing and verification use `node:crypto` locally.
   `--public-key`/`--root`; a seal on its own is `trusted: no`, and a `--root`
   pin attests content only, not provenance (pin `--public-key` for that).
 - Decompression is bounded (65,535 members, 1 GiB uncompressed) and member
-  paths are normalized; absolute or `..` paths are rejected.
+  paths are normalized; absolute, `..`, backslash, drive-letter, and
+  percent-encoded traversal paths are rejected, and archives are never
+  extracted to disk.
 
 ## The suite
 

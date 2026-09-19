@@ -68,6 +68,30 @@ describe("member path normalization", () => {
     expect(() => memberDigests(archive)).toThrow();
   });
 
+  test("rejects backslash and drive-letter paths", () => {
+    expect(() => normalizeMemberPath("C:\\evil")).toThrow();
+    expect(() => normalizeMemberPath("a\\..\\b")).toThrow();
+    expect(() => normalizeMemberPath("dir\\file.txt")).toThrow();
+    expect(() => normalizeMemberPath("C:/evil")).toThrow();
+  });
+
+  test("rejects percent-encoded traversal and separators", () => {
+    expect(() => normalizeMemberPath("%2e%2e/x")).toThrow();
+    expect(() => normalizeMemberPath("%2E%2E/x")).toThrow();
+    expect(() => normalizeMemberPath("a/%2f/b")).toThrow();
+    expect(() => normalizeMemberPath("a%5c..%5cb")).toThrow();
+    expect(() => normalizeMemberPath("%00")).toThrow();
+  });
+
+  test("memberDigests rejects Windows and encoded traversal entries", () => {
+    expect(() =>
+      memberDigests(zipSync({ "C:\\evil": strToU8("x") })),
+    ).toThrow();
+    expect(() =>
+      memberDigests(zipSync({ "%2e%2e/x": strToU8("x") })),
+    ).toThrow();
+  });
+
   test("directory entries are skipped and normalization is canonical", () => {
     const archive = zipSync({
       "dir/": new Uint8Array(0),
