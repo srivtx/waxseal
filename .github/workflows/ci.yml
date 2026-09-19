@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Test
+        run: bun test
+
+      - name: Round trip (keygen + seal + verify)
+        run: |
+          bun run make-fixtures
+          bun src/cli.ts keygen --out ci-key
+          bun src/cli.ts seal fixtures/default.wacz --key ci-key.pem --out ci-seal.json
+          bun src/cli.ts verify fixtures/default.wacz -s ci-seal.json
