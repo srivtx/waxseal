@@ -29,3 +29,11 @@
   height: 18px;
   stroke-width: 2.4;
 }
+
+/* ── Hero terminal ──────────────────────────────────────────────────────── */
+/* The landing page prints real command output, which can be long. Cap the
+   card so the hero always fits the fold; the body scrolls instead. */
+.term__body {
+  max-height: 20rem;
+  overflow-y: auto;
+}
