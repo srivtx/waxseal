@@ -16,3 +16,16 @@
     --accent-ink: #0a0a0a;
   }
 }
+
+/* ── Brand mark ─────────────────────────────────────────────────────────── */
+.brand__mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.brand__mark .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.4;
+}
