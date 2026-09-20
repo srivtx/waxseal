@@ -16,9 +16,9 @@
 
 ---
 
-**Live site:** [waxseal](https://waxseal-srivtx.vercel.app)  ·  **Demo:** [https://waxseal-srivtx.vercel.app/#demo](https://waxseal-srivtx.vercel.app/#demo)  ·  **Source:** [github.com/srivtx/waxseal](https://github.com/srivtx/waxseal)  ·  **Changelog:** [CHANGELOG.md](CHANGELOG.md)
+**Live site:** [waxseal](https://srivtx.github.io/waxseal)  ·  **Demo:** [https://srivtx.github.io/waxseal/#demo](https://srivtx.github.io/waxseal/#demo)  ·  **Source:** [github.com/srivtx/waxseal](https://github.com/srivtx/waxseal)  ·  **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
-**Docs:** [Commands](https://waxseal-srivtx.vercel.app/commands)  ·  [Usage](https://waxseal-srivtx.vercel.app/usage)  ·  [CI](https://waxseal-srivtx.vercel.app/ci)  ·  [FAQ](https://waxseal-srivtx.vercel.app/faq)
+**Docs:** [Commands](https://srivtx.github.io/waxseal/commands)  ·  [Usage](https://srivtx.github.io/waxseal/usage)  ·  [CI](https://srivtx.github.io/waxseal/ci)  ·  [FAQ](https://srivtx.github.io/waxseal/faq)
 
 ## What a WACZ is, and what is missing
 
@@ -192,7 +192,7 @@ const result = verifySeal(seal, archive, { strictBytes: true });
 
 A self-contained product site lives in [`site/`](site/) and ships with the
 repo. The live site is at
-**[https://waxseal-srivtx.vercel.app](https://waxseal-srivtx.vercel.app)**.
+**[https://srivtx.github.io/waxseal](https://srivtx.github.io/waxseal)**.
 
 The page embeds an interactive demo that runs the real Merkle and
 inclusion-proof code in the browser. In the browser it hashes with a vendored
@@ -317,7 +317,7 @@ Every tool emits stable JSON with `--json` and SARIF 2.1.0, with a documented
 exit-code scheme, so an agent can read findings without scraping a screen.
 
 - **Docs index:** the site serves a machine-readable index at
-  [waxseal-srivtx.vercel.app/llms.txt](https://waxseal-srivtx.vercel.app/llms.txt).
+  [srivtx.github.io/waxseal/llms.txt](https://srivtx.github.io/waxseal/llms.txt).
 - **MCP server:** [lenses-mcp](https://github.com/srivtx/lenses-mcp) exposes all
   five tools over stdio (audit for each format, plus `booklens_fix`,
   `waxseal_seal`, `waxseal_verify`, `waxseal_inspect`).

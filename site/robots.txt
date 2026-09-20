@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://waxseal-srivtx.vercel.app/sitemap.xml
+Sitemap: https://srivtx.github.io/waxseal/sitemap.xml

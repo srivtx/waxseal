@@ -7,11 +7,11 @@ waxseal builds a deterministic Merkle root over every member of a WACZ web archi
 It runs entirely offline, with no network calls and no telemetry. Output is human-readable text, a detached `seal.json`, a proofs JSON file, and stable `--json` from `inspect`. Exit codes are `0` (success), `1` (findings or a verification failure), `2` (usage or argument error), and `3` (I/O failure).
 
 ## Docs
-- [Overview](https://waxseal-srivtx.vercel.app/): Seal a WACZ archive and verify it offline, with a live demo.
-- [Commands](https://waxseal-srivtx.vercel.app/commands): Every command — `keygen`, `seal`, `verify`, `proof-verify`, and `inspect` — with real output.
-- [Usage](https://waxseal-srivtx.vercel.app/usage): Install, every `--help` option, examples, exit codes, and JSON output.
-- [CI](https://waxseal-srivtx.vercel.app/ci): Verify a seal in CI with the exit code as the gate and a pinned public key or root.
-- [FAQ](https://waxseal-srivtx.vercel.app/faq): Scope, limitations, and comparisons to py-wacz, wabac.js, ReplayWeb.page, and the in-archive WACZ signature.
+- [Overview](https://srivtx.github.io/waxseal/): Seal a WACZ archive and verify it offline, with a live demo.
+- [Commands](https://srivtx.github.io/waxseal/commands): Every command — `keygen`, `seal`, `verify`, `proof-verify`, and `inspect` — with real output.
+- [Usage](https://srivtx.github.io/waxseal/usage): Install, every `--help` option, examples, exit codes, and JSON output.
+- [CI](https://srivtx.github.io/waxseal/ci): Verify a seal in CI with the exit code as the gate and a pinned public key or root.
+- [FAQ](https://srivtx.github.io/waxseal/faq): Scope, limitations, and comparisons to py-wacz, wabac.js, ReplayWeb.page, and the in-archive WACZ signature.
 
 ## Optional
 - [Source](https://github.com/srivtx/waxseal): TypeScript implementation, tests, and issue tracker.
